@@ -40,9 +40,7 @@ export default function Header() {
         {user ? (
           <>
             <div className={css.navigationItem}>
-              <span className={css.userEmail}>
-                {user.name || user.email}
-              </span>
+              <span className={css.userEmail}>{user.name || user.email}</span>
             </div>
             <div className={css.navigationItem}>
               <button

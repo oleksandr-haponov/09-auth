@@ -35,10 +35,8 @@ export async function GET() {
             maxAge: Number(parsed["Max-Age"]),
           };
 
-          if (parsed.accessToken)
-            cookieStore.set("accessToken", parsed.accessToken, options);
-          if (parsed.refreshToken)
-            cookieStore.set("refreshToken", parsed.refreshToken, options);
+          if (parsed.accessToken) cookieStore.set("accessToken", parsed.accessToken, options);
+          if (parsed.refreshToken) cookieStore.set("refreshToken", parsed.refreshToken, options);
         }
         return NextResponse.json({ success: true }, { status: 200 });
       }
