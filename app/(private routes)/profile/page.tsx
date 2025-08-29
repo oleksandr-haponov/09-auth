@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getMe, updateMe, type UpdateUserPayload } from "@/lib/api/auth";
 import { useRouter } from "next/navigation";
 import css from "./page.module.css";
@@ -9,50 +10,72 @@ export default function ProfilePage() {
   const router = useRouter();
   const qc = useQueryClient();
 
-  // грузим профиль пользователя
-  const { data: user, isLoading, isError, error } = useQuery({
+  // Загружаем профиль
+  const {
+    data: user,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["me"],
     queryFn: getMe,
     retry: false,
   });
 
-  // обновление имени
+  // Мутация обновления профиля
   const mut = useMutation({
     mutationFn: (payload: UpdateUserPayload) => updateMe(payload),
     onSuccess: (updated) => {
-      // обновляем кэш профиля
+      // Обновляем кеш профиля
       qc.setQueryData(["me"], updated);
-      // заодно обновим сессию в хедере
+      // Обновим сессию в хедере
       qc.invalidateQueries({ queryKey: ["session"] });
     },
   });
 
-  if (isLoading) return <main className={css.mainContent}>Loading...</main>;
+  // Если неавторизован — отправляем на Sign in
+  useEffect(() => {
+    if (!isLoading && !isError && user == null) {
+      router.replace("/sign-in");
+    }
+  }, [isLoading, isError, user, router]);
+
+  const errorMessage = useMemo(
+    () => (error instanceof Error ? error.message : "Failed to load profile"),
+    [error],
+  );
+
+  if (isLoading) {
+    return (
+      <main className={css.mainContent}>
+        <p>Loading, please wait...</p>
+      </main>
+    );
+  }
+
   if (isError) {
     return (
       <main className={css.mainContent}>
         <div className={css.profileCard}>
           <h1 className={css.formTitle}>Profile</h1>
-          <p style={{ color: "#b91c1c" }}>
-            {(error as Error)?.message ?? "Failed to load profile"}
-          </p>
+          <p style={{ color: "#b91c1c" }}>{errorMessage}</p>
         </div>
       </main>
     );
   }
-  if (!user) {
-    // неавторизован — отправим на вход
-    router.replace("/sign-in");
-    return null;
-  }
+
+  // user === null: уже редиректим выше
+  if (!user) return null;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const name = String(fd.get("name") || "").trim();
-    if (name && name !== user.name) {
-      mut.mutate({ name });
-    }
+
+    // Нечего сохранять
+    if (!name || name === (user.name ?? "")) return;
+
+    mut.mutate({ name });
   }
 
   return (
@@ -60,24 +83,30 @@ export default function ProfilePage() {
       <div className={css.profileCard}>
         <h1 className={css.formTitle}>Your Profile</h1>
 
-        {/* Автар (если появится в API) — пока можно опустить */}
-        {/* <img className={css.avatar} src={user.avatar ?? "/default-avatar.png"} width={120} height={120} alt="Avatar" /> */}
+        {/* Можно добавить аватар позже, если появится в API */}
+        {/* <img className={css.avatar} src="/avatar.png" width={120} height={120} alt="Avatar" /> */}
 
         <form onSubmit={onSubmit} className={css.profileInfo}>
-          <div>
-            <p><strong>Email:</strong> {user.email}</p>
-          </div>
+          <p>
+            <strong>Email:</strong> {user.email}
+          </p>
 
           <div className={css.usernameWrapper}>
             <label htmlFor="name">Display name</label>
             <input
               id="name"
               name="name"
-              defaultValue={user.name || ""}
+              defaultValue={user.name ?? ""}
               placeholder="Your name"
               className={css.input}
             />
           </div>
+
+          {mut.isError && (
+            <p style={{ color: "#b91c1c" }}>
+              {(mut.error as Error)?.message ?? "Failed to update profile"}
+            </p>
+          )}
 
           <div className={css.actions}>
             <button
@@ -92,12 +121,6 @@ export default function ProfilePage() {
               {mut.isPending ? "Saving..." : "Save"}
             </button>
           </div>
-
-          {mut.isError && (
-            <p style={{ color: "#b91c1c" }}>
-              {(mut.error as Error)?.message ?? "Failed to update profile"}
-            </p>
-          )}
         </form>
       </div>
     </main>
