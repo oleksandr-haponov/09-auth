@@ -10,7 +10,6 @@ export default function ProfilePage() {
   const router = useRouter();
   const qc = useQueryClient();
 
-  // Загружаем профиль
   const {
     data: user,
     isLoading,
@@ -22,18 +21,14 @@ export default function ProfilePage() {
     retry: false,
   });
 
-  // Мутация обновления профиля
   const mut = useMutation({
     mutationFn: (payload: UpdateUserPayload) => updateMe(payload),
     onSuccess: (updated) => {
-      // Обновляем кеш профиля
       qc.setQueryData(["me"], updated);
-      // Обновим сессию в хедере
       qc.invalidateQueries({ queryKey: ["session"] });
     },
   });
 
-  // Если неавторизован — отправляем на Sign in
   useEffect(() => {
     if (!isLoading && !isError && user == null) {
       router.replace("/sign-in");
@@ -64,16 +59,18 @@ export default function ProfilePage() {
     );
   }
 
-  // user === null: уже редиректим выше
   if (!user) return null;
+
+  // безопасное значение текущего имени для сравнения в колбэке
+  const currentName = user.name ?? "";
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const name = String(fd.get("name") || "").trim();
 
-    // Нечего сохранять
-    if (!name || name === (user.name ?? "")) return;
+    // нечего сохранять
+    if (!name || name === currentName) return;
 
     mut.mutate({ name });
   }
@@ -82,9 +79,6 @@ export default function ProfilePage() {
     <main className={css.mainContent}>
       <div className={css.profileCard}>
         <h1 className={css.formTitle}>Your Profile</h1>
-
-        {/* Можно добавить аватар позже, если появится в API */}
-        {/* <img className={css.avatar} src="/avatar.png" width={120} height={120} alt="Avatar" /> */}
 
         <form onSubmit={onSubmit} className={css.profileInfo}>
           <p>
@@ -96,7 +90,7 @@ export default function ProfilePage() {
             <input
               id="name"
               name="name"
-              defaultValue={user.name ?? ""}
+              defaultValue={currentName}
               placeholder="Your name"
               className={css.input}
             />
