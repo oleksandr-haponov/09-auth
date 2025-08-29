@@ -1,6 +1,11 @@
+// app/(private routes)/layout.tsx
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { noStore } from "next/cache";
+
+// (на всякий) делаем контент всегда динамическим
+export const revalidate = 0;
 
 export default async function PrivateGroupLayout({
   children,
@@ -9,22 +14,25 @@ export default async function PrivateGroupLayout({
   children: ReactNode;
   modal: ReactNode;
 }) {
-  // Проверяем сессию через наш proxy-роут /api/auth/session
-  // По ТЗ он возвращает 200 с объектом user ИЛИ 200 без тела (если неавторизован)
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  // этот layout выполняется на сервере; отключаем кеш
+  noStore();
 
-  const res = await fetch(`${base}/api/auth/session`, {
-    headers: { cookie: cookies().toString() },
-    cache: "no-store",
-  });
-
-  // Если ответ 200 без тела — считаем, что неавторизован
   let authed = false;
-  if (res.ok) {
-    const text = await res.text();
-    authed = Boolean(text && text.trim() !== "");
+
+  try {
+    // Внутренний fetch на наш proxy-роут
+    const res = await fetch("/api/auth/session", {
+      headers: { cookie: cookies().toString() },
+      cache: "no-store",
+    });
+
+    if (res.ok) {
+      const text = await res.text(); // по ТЗ: user-JSON или пустое тело
+      authed = Boolean(text && text.trim() !== "");
+    }
+  } catch {
+    // если сеть/прокси упали, считаем неавторизованным
+    authed = false;
   }
 
   if (!authed) {
