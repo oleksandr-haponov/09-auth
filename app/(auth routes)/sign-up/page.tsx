@@ -1,73 +1,57 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { register, type RegisterPayload } from "@/lib/api/auth";
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { register, type RegisterPayload } from "@/lib/api/clientApi";
 import { useRouter } from "next/navigation";
 import css from "./page.module.css";
 
 export default function SignUpPage() {
   const router = useRouter();
-  const qc = useQueryClient();
+  const [error, setError] = useState("");
 
-  const mut = useMutation({
+  const { mutate, isPending } = useMutation({
     mutationFn: (p: RegisterPayload) => register(p),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["session"] });
-      router.push("/notes");
+      router.replace("/profile");
+    },
+    onError: (e: any) => {
+      const msg = e?.response?.data?.message || e?.message || "Registration failed";
+      setError(String(msg));
     },
   });
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError("");
     const fd = new FormData(e.currentTarget);
-    mut.mutate({
-      name: String(fd.get("name") || ""),
-      email: String(fd.get("email") || ""),
-      password: String(fd.get("password") || ""),
-    });
+    const email = String(fd.get("email") || "");
+    const password = String(fd.get("password") || "");
+    mutate({ email, password });
   }
 
   return (
     <main className={css.mainContent}>
-      <form onSubmit={onSubmit} className={css.form}>
-        <h1 className={css.formTitle}>Sign up</h1>
+      <h1 className={css.formTitle}>Sign up</h1>
 
-        <label className={css.formGroup}>
-          Name
-          <input name="name" required className={css.input} placeholder="Your name" />
-        </label>
+      <form className={css.form} onSubmit={onSubmit}>
+        <div className={css.formGroup}>
+          <label htmlFor="email">Email</label>
+          <input id="email" type="email" name="email" className={css.input} required />
+        </div>
 
-        <label className={css.formGroup}>
-          Email
-          <input
-            name="email"
-            type="email"
-            required
-            className={css.input}
-            placeholder="you@example.com"
-          />
-        </label>
-
-        <label className={css.formGroup}>
-          Password
-          <input
-            name="password"
-            type="password"
-            required
-            className={css.input}
-            placeholder="••••••••"
-          />
-        </label>
-
-        {mut.isError && (
-          <p className={css.error}>{(mut.error as Error)?.message ?? "Failed to sign up"}</p>
-        )}
+        <div className={css.formGroup}>
+          <label htmlFor="password">Password</label>
+          <input id="password" type="password" name="password" className={css.input} required />
+        </div>
 
         <div className={css.actions}>
-          <button type="submit" className={css.submitButton} disabled={mut.isPending}>
-            {mut.isPending ? "Creating..." : "Create account"}
+          <button type="submit" className={css.submitButton} disabled={isPending}>
+            Register
           </button>
         </div>
+
+        <p className={css.error}>{error || "Error"}</p>
       </form>
     </main>
   );
