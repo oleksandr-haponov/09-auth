@@ -1,34 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import css from "../Header/Header.module.css";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useAuthStore } from "@/lib/store/authStore";
+import { logout } from "@/lib/api/clientApi";
+import css from "./AuthNavigation.module.css";
 
-export interface AuthNavigationProps {
-  isAuthed: boolean;
-  userEmail?: string | null;
-  onLogout?: () => void;
-}
+export default function AuthNavigation() {
+  const router = useRouter();
+  const { isAuthenticated, user, clearIsAuthenticated } = useAuthStore();
+  const [pending, setPending] = useState(false);
 
-/**
- * Рендерит <li> элементы навигации для auth.
- * Ровно как в спецификации:
- *  - Profile (+ prefetch={false})
- *  - email + Logout
- *  - Login / Sign up (для неавторизованного)
- */
-export default function AuthNavigation({ isAuthed, userEmail, onLogout }: AuthNavigationProps) {
-  if (isAuthed) {
+  const onLogout = async () => {
+    if (pending) return;
+    setPending(true);
+    try {
+      await logout();
+    } finally {
+      clearIsAuthenticated();
+      router.replace("/sign-in");
+    }
+  };
+
+  if (isAuthenticated) {
     return (
       <>
         <li className={css.navigationItem}>
-          <Link href="/profile" prefetch={false} className={css.navigationLink}>
+          <Link prefetch={false} href="/profile" className={css.navigationLink}>
             Profile
           </Link>
         </li>
 
         <li className={css.navigationItem}>
-          <p className={css.userEmail}>{userEmail ?? "User email"}</p>
-          <button type="button" className={css.logoutButton} onClick={onLogout}>
+          <p className={css.userEmail}>{user?.email ?? "User email"}</p>
+          <button type="button" className={css.logoutButton} onClick={onLogout} disabled={pending}>
             Logout
           </button>
         </li>
@@ -39,12 +45,13 @@ export default function AuthNavigation({ isAuthed, userEmail, onLogout }: AuthNa
   return (
     <>
       <li className={css.navigationItem}>
-        <Link href="/sign-in" prefetch={false} className={css.navigationLink}>
+        <Link prefetch={false} href="/sign-in" className={css.navigationLink}>
           Login
         </Link>
       </li>
+
       <li className={css.navigationItem}>
-        <Link href="/sign-up" prefetch={false} className={css.navigationLink}>
+        <Link prefetch={false} href="/sign-up" className={css.navigationLink}>
           Sign up
         </Link>
       </li>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { register, type RegisterPayload } from "@/lib/api/clientApi";
 import { useRouter } from "next/navigation";
@@ -8,22 +7,16 @@ import css from "./page.module.css";
 
 export default function SignUpPage() {
   const router = useRouter();
-  const [error, setError] = useState("");
 
-  const { mutate, isPending } = useMutation({
+  const { mutate } = useMutation({
     mutationFn: (p: RegisterPayload) => register(p),
     onSuccess: () => {
       router.replace("/profile");
-    },
-    onError: (e: any) => {
-      const msg = e?.response?.data?.message || e?.message || "Registration failed";
-      setError(String(msg));
     },
   });
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError("");
     const fd = new FormData(e.currentTarget);
     const email = String(fd.get("email") || "");
     const password = String(fd.get("password") || "");
@@ -33,7 +26,6 @@ export default function SignUpPage() {
   return (
     <main className={css.mainContent}>
       <h1 className={css.formTitle}>Sign up</h1>
-
       <form className={css.form} onSubmit={onSubmit}>
         <div className={css.formGroup}>
           <label htmlFor="email">Email</label>
@@ -46,12 +38,12 @@ export default function SignUpPage() {
         </div>
 
         <div className={css.actions}>
-          <button type="submit" className={css.submitButton} disabled={isPending}>
+          <button type="submit" className={css.submitButton}>
             Register
           </button>
         </div>
 
-        <p className={css.error}>{error || "Error"}</p>
+        <p className={css.error}>Error</p>
       </form>
     </main>
   );
