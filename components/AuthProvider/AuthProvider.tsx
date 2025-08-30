@@ -7,6 +7,7 @@ import { useAuthStore } from "@/lib/store/authStore";
 import css from "./AuthProvider.module.css";
 
 const isPrivate = (p: string) => p.startsWith("/profile") || p.startsWith("/notes");
+const isAuthRoute = (p: string) => p === "/sign-in" || p === "/sign-up";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -14,7 +15,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [checking, setChecking] = useState(true);
   const setUser = useAuthStore((s) => s.setUser);
   const clear = useAuthStore((s) => s.clearIsAuthenticated);
+
   const gated = useMemo(() => isPrivate(pathname), [pathname]);
+  const authPage = useMemo(() => isAuthRoute(pathname), [pathname]);
 
   useEffect(() => {
     let active = true;
@@ -22,15 +25,26 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setChecking(true);
       try {
         const user = await fetchSession();
+
         if (!active) return;
+
         if (user) {
+          // записали пользователя в Zustand
           setUser(user);
-        } else if (gated) {
-          await logout().catch(() => {});
-          clear();
-          router.replace("/sign-in");
+
+          // если пользователь уже авторизован и он на /sign-in|/sign-up — уводим на /profile
+          if (authPage) {
+            router.replace("/profile");
+          }
         } else {
-          clear();
+          // нет сессии
+          if (gated) {
+            await logout().catch(() => {});
+            clear();
+            router.replace("/sign-in");
+          } else {
+            clear();
+          }
         }
       } finally {
         if (active) setChecking(false);
