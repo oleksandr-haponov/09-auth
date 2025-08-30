@@ -1,3 +1,4 @@
+// lib/api/serverApi.ts
 import "server-only";
 import type { User } from "@/types/user";
 import { cookies } from "next/headers";

@@ -1,3 +1,4 @@
+// app/(private routes)/profile/page.tsx
 import type { Metadata } from "next";
 import css from "./page.module.css";
 
