@@ -29,7 +29,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
         if (user) {
           setUser(user);
-          if (authPage) router.replace("/profile"); // ← уводим с /sign-in|/sign-up
+          if (authPage) router.replace("/profile"); // авторизован? уводим с /sign-(in|up)
         } else {
           if (gated) {
             await logout().catch(() => {});
