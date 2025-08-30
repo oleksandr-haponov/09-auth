@@ -1,30 +1,31 @@
-"use client";
-
-import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { me } from "@/lib/api/clientApi";
+import type { Metadata } from "next";
 import css from "./page.module.css";
 
+export const metadata: Metadata = {
+  title: "Profile Page | NoteHub",
+  description: "User profile page",
+  robots: { index: false, follow: false },
+  openGraph: {
+    title: "Profile Page | NoteHub",
+    description: "User profile page",
+    type: "website",
+  },
+};
+
 export default function ProfilePage() {
-  const { data } = useQuery({ queryKey: ["me"], queryFn: me, retry: false });
-
-  const username = data?.username ?? "your_username";
-  const email = data?.email ?? "your_email@example.com";
-
   return (
     <main className={css.mainContent}>
       <div className={css.profileCard}>
         <div className={css.header}>
           <h1 className={css.formTitle}>Profile Page</h1>
-          <Link href="/profile/edit" className={css.editProfileButton} prefetch={false}>
+          <a href="/profile/edit" className={css.editProfileButton}>
             Edit Profile
-          </Link>
+          </a>
         </div>
 
         <div className={css.avatarWrapper}>
-          {/* Можно заменить на <Image /> и добавить remotePatterns при внешнем URL */}
           <img
-            src={data?.avatarUrl || "/avatar.png"}
+            src="/avatar.png"
             alt="User Avatar"
             width={120}
             height={120}
@@ -33,8 +34,8 @@ export default function ProfilePage() {
         </div>
 
         <div className={css.profileInfo}>
-          <p>Username: {username}</p>
-          <p>Email: {email}</p>
+          <p>Username: your_username</p>
+          <p>Email: your_email@example.com</p>
         </div>
       </div>
     </main>
