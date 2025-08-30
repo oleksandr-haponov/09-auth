@@ -6,6 +6,27 @@ import { register, type RegisterPayload } from "@/lib/api/clientApi";
 import { useRouter } from "next/navigation";
 import css from "./page.module.css";
 
+function parseApiError(e: any): string {
+  const res = e?.response;
+  const base = res?.data?.message || e?.message || "Registration failed";
+  const errors = res?.data?.errors;
+
+  if (!errors) return String(base);
+
+  if (Array.isArray(errors)) {
+    return `${base}: ${errors.join(", ")}`;
+  }
+  if (typeof errors === "object") {
+    const parts: string[] = [];
+    for (const [k, v] of Object.entries(errors)) {
+      if (Array.isArray(v)) parts.push(`${k}: ${(v as string[]).join(", ")}`);
+      else parts.push(`${k}: ${String(v)}`);
+    }
+    return `${base}: ${parts.join("; ")}`;
+  }
+  return String(base);
+}
+
 export default function SignUpPage() {
   const router = useRouter();
   const [error, setError] = useState("");
@@ -15,11 +36,8 @@ export default function SignUpPage() {
     onSuccess: () => {
       router.replace("/profile");
     },
-    onError: (e: any) => {
-      const msg = e?.response?.data?.message || e?.message || "Registration failed";
-      setError(String(msg));
-      // чтобы увидеть в консоли, что именно упало
-      // console.error(e);
+    onError: (e) => {
+      setError(parseApiError(e));
     },
   });
 
@@ -27,8 +45,14 @@ export default function SignUpPage() {
     e.preventDefault();
     setError("");
     const fd = new FormData(e.currentTarget);
-    const email = String(fd.get("email") || "");
+    const email = String(fd.get("email") || "").trim();
     const password = String(fd.get("password") || "");
+
+    // Клиентская валидация под типичные требования бэка
+    if (!email) return setError("Email is required");
+    if (password.length < 8) return setError("Password must be at least 8 characters");
+    // возможно, API требует ещё цифру/букву, но это уже покажет сервер
+
     mutate({ email, password });
   }
 
@@ -44,7 +68,14 @@ export default function SignUpPage() {
 
         <div className={css.formGroup}>
           <label htmlFor="password">Password</label>
-          <input id="password" type="password" name="password" className={css.input} required />
+          <input
+            id="password"
+            type="password"
+            name="password"
+            className={css.input}
+            required
+            minLength={8}
+          />
         </div>
 
         <div className={css.actions}>
@@ -53,7 +84,6 @@ export default function SignUpPage() {
           </button>
         </div>
 
-        {/* показываем текст только при ошибке */}
         <p className={css.error}>{error}</p>
       </form>
     </main>
