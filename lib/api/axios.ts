@@ -1,14 +1,16 @@
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
 
-const baseURL = `${process.env.NEXT_PUBLIC_API_URL}/api`;
+const site = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
 
-const api = axios.create({
-  baseURL,
+const api: AxiosInstance = axios.create({
+  baseURL: site ? `${site}/api` : "/api",
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
+  timeout: 15000,
 });
 
 export default api;
+export { api };
