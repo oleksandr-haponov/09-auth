@@ -1,99 +1,63 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { fetchNotes } from "@/lib/api/notes";
-import type { Note } from "@/types/note";
-import Link from "next/link";
 
 export default function NotesPage() {
-  const [search, setSearch] = useState("");
-  const [debounced, setDebounced] = useState("");
-  const [page, setPage] = useState(1);
+  const sp = useSearchParams();
+  const page = Number(sp.get("page") || "1");
+  const search = sp.get("search") || undefined;
+  const tag = sp.get("tag") || undefined;
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setDebounced(search.trim());
-      setPage(1);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [search]);
-
-  const { data, isLoading, isError, error, isFetching } = useQuery<Note[]>({
-    queryKey: ["notes", { search: debounced, page }],
-    queryFn: () => fetchNotes({ search: debounced, page, perPage: 12 }),
-    placeholderData: keepPreviousData,
-    refetchOnWindowFocus: false,
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["notes", { page, search, tag }],
+    queryFn: () => fetchNotes({ page, search, tag, perPage: 12 }),
+    staleTime: 0,
   });
 
-  if (isLoading) return <main style={{ padding: 24 }}>Loading...</main>;
-  if (isError)
-    return <main style={{ padding: 24, color: "#b91c1c" }}>{(error as Error).message}</main>;
+  if (isLoading) {
+    return <main style={{ padding: 24 }}>Loading notes...</main>;
+  }
+  if (isError) {
+    return (
+      <main style={{ padding: 24, color: "#dc3545" }}>
+        {(error as Error)?.message || "Failed to load notes"}
+      </main>
+    );
+  }
 
   const notes = data ?? [];
-
   return (
     <main style={{ padding: 24 }}>
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search notes..."
-          style={{ padding: "8px 12px", flex: "1 1 320px" }}
-        />
-        <button
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={page <= 1 || isFetching}
-        >
-          Prev
-        </button>
-        <button onClick={() => setPage((p) => p + 1)} disabled={isFetching}>
-          Next
-        </button>
-      </div>
-
-      {notes.length === 0 ? (
-        <p>No notes found.</p>
+      <h1>Notes</h1>
+      {!notes.length ? (
+        <p>No notes yet.</p>
       ) : (
         <ul
           style={{
             display: "grid",
-            gap: 16,
-            gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
+            gap: 12,
+            gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))",
+            padding: 0,
           }}
         >
           {notes.map((n) => (
             <li
               key={n.id}
               style={{
-                border: "1px solid #dee2e6",
+                listStyle: "none",
+                border: "1px solid #e5e7eb",
                 borderRadius: 8,
-                padding: 16,
+                padding: 12,
                 background: "#fff",
               }}
             >
-              <h3 style={{ marginTop: 0 }}>{n.title}</h3>
-              <p>{n.content}</p>
-              <div
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-              >
-                <span
-                  title={n.tag}
-                  style={{
-                    padding: "2px 8px",
-                    border: "1px solid #b6d4fe",
-                    borderRadius: 12,
-                    color: "#0d6efd",
-                    background: "#e7f1ff",
-                  }}
-                >
-                  {n.tag}
-                </span>
-                {/* ВАЖНО: ссылка внутри того же layout-scope для перехвата модалкой */}
-                <Link href={`/notes/${n.id}`} style={{ textDecoration: "none", color: "#0d6efd" }}>
-                  View details
-                </Link>
-              </div>
+              <h3 style={{ margin: "0 0 6px" }}>{n.title}</h3>
+              <small style={{ opacity: 0.7 }}>#{n.tag}</small>
+              <p style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", color: "#334155" }}>
+                {n.content.slice(0, 160)}
+              </p>
             </li>
           ))}
         </ul>

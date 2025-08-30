@@ -17,9 +17,3 @@ export async function GET(req: NextRequest) {
   });
   return relay(res);
 }
-
-export async function POST(req: NextRequest) {
-  const body = await req.text();
-  const res = await upstream("/notes", { method: "POST", body });
-  return relay(res);
-}
