@@ -4,26 +4,31 @@ import { NextResponse } from "next/server";
 export const UPSTREAM = "https://notehub-api.goit.study";
 export const JAR_COOKIE = "__nh_proxy";
 
-/** Прочитати наш «джар» із куками апстріма */
-export function getJar(): string {
-  return cookies().get(JAR_COOKIE)?.value ?? "";
+/** Прочитати наш «джар» із куками апстріма (async у Next 15) */
+export async function getJar(): Promise<string> {
+  const ck = await cookies();
+  return ck.get(JAR_COOKIE)?.value ?? "";
 }
 
 /** Забрати set-cookie з апстріма і зберегти їх у наш джар */
-export function setJarFromUpstream(res: Response) {
-  // Next 14/15: headers.getSetCookie(); фолбек на raw
-  // @ts-ignore
-  const setCookies = res.headers.getSetCookie?.() ?? (res.headers as any).raw?.()["set-cookie"];
-  const items: string[] = Array.isArray(setCookies) ? setCookies : setCookies ? [setCookies] : [];
+export async function setJarFromUpstream(res: Response) {
+  // безопасно получаем список Set-Cookie
+  const setCookies =
+    (res as any).headers?.getSetCookie?.() ??
+    (res.headers as any).get?.("set-cookie") ??
+    (res.headers as any).raw?.()["set-cookie"];
+
+  const list: string[] = Array.isArray(setCookies) ? setCookies : setCookies ? [setCookies] : [];
 
   const pairs: string[] = [];
-  for (const line of items) {
+  for (const line of list) {
     const first = String(line).split(";")[0]; // name=value
     if (first.includes("=")) pairs.push(first.trim());
   }
   if (!pairs.length) return;
 
-  cookies().set({
+  const ck = await cookies();
+  ck.set({
     name: JAR_COOKIE,
     value: pairs.join("; "),
     httpOnly: true,
@@ -52,7 +57,7 @@ export async function upstream(
     headers.set("content-type", "application/json");
   }
 
-  const jar = getJar();
+  const jar = await getJar();
   if (jar) headers.set("cookie", jar);
 
   const res = await fetch(url.toString(), {
@@ -61,11 +66,11 @@ export async function upstream(
     redirect: "manual",
   });
 
-  setJarFromUpstream(res);
+  await setJarFromUpstream(res);
   return res;
 }
 
-/** Переслати відповідь апстріма як NextResponse (JSON/текст/бінарка) */
+/** Переслати відповідь апстріма як NextResponse */
 export async function relay(res: Response): Promise<NextResponse> {
   const ct = res.headers.get("content-type") ?? "";
   const init: ResponseInit = {

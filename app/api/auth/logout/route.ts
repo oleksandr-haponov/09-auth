@@ -7,7 +7,9 @@ export const revalidate = 0;
 
 export async function POST(_req: NextRequest) {
   const res = await upstream("/auth/logout", { method: "POST" });
-  // локально чистим наш jar
-  cookies().delete(JAR_COOKIE);
+
+  const ck = await cookies();
+  ck.delete(JAR_COOKIE);
+
   return relay(res);
 }
