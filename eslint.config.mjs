@@ -10,8 +10,8 @@ export default [
       "**/.vercel/**",
       "**/dist/**",
       "**/out/**",
-      "**/coverage/**"
-    ]
+      "**/coverage/**",
+    ],
   },
 
   // Базовый конфиг Next
@@ -20,15 +20,15 @@ export default [
   // Глобальные правила проекта
   {
     rules: {
-      "@typescript-eslint/no-empty-object-type": ["warn", { allowObjectTypes: true }]
-    }
+      "@typescript-eslint/no-empty-object-type": ["warn", { allowObjectTypes: true }],
+    },
   },
 
   // Отключение правила для route handlers
   {
     files: ["app/api/**/route.ts"],
     rules: {
-      "@typescript-eslint/no-empty-object-type": "off"
-    }
-  }
+      "@typescript-eslint/no-empty-object-type": "off",
+    },
+  },
 ];
