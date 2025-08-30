@@ -25,19 +25,15 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       setChecking(true);
       try {
         const user = await fetchSession();
-
         if (!active) return;
 
         if (user) {
-          // записали пользователя в Zustand
           setUser(user);
-
-          // если пользователь уже авторизован и он на /sign-in|/sign-up — уводим на /profile
           if (authPage) {
+            // гарантируем, что уйдём с /sign-in|/sign-up
             router.replace("/profile");
           }
         } else {
-          // нет сессии
           if (gated) {
             await logout().catch(() => {});
             clear();
