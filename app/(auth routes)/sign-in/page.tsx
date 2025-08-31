@@ -1,3 +1,4 @@
+// app/(auth routes)/sign-in/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/store/authStore";
 import css from "./page.module.css";
 
-// NEW: безопасный парсер сообщения об ошибке без any
+// безопасный парсер сообщения об ошибке без any
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   const r = (err as { response?: { data?: { message?: string } } })?.response;
@@ -20,7 +21,7 @@ export default function SignInPage() {
   const isAuthed = useAuthStore((s) => s.isAuthenticated);
   const [error, setError] = useState("");
 
-  // как было: если уже авторизованы — редирект; иначе пробуем подтянуть сессию
+  // если уже авторизованы — редирект; иначе пробуем подтянуть сессию
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -51,7 +52,6 @@ export default function SignInPage() {
       router.prefetch?.("/profile");
       router.replace("/profile");
     },
-    // CHANGED: тип err -> unknown, извлечение без any
     onError: (err: unknown) => {
       setError(getErrorMessage(err));
     },
@@ -66,6 +66,9 @@ export default function SignInPage() {
       password: String(fd.get("password") || ""),
     });
   }
+
+  // Гард: если уже авторизованы — ничего не рендерим, чтобы окно логина не "висело"
+  if (isAuthed) return null;
 
   return (
     <main className={css.mainContent}>
@@ -88,7 +91,6 @@ export default function SignInPage() {
           </button>
         </div>
 
-        {/* CHANGED: убран aria-live для точного совпадения с ТЗ */}
         <p className={css.error}>{error}</p>
       </form>
     </main>

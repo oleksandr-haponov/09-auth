@@ -82,9 +82,7 @@ export default function SignUpPage() {
             Register
           </button>
         </div>
-
-        {/* CHANGED: статичний текст відповідно до ТЗ */}
-        <p className={css.error}>Error</p>
+        <p className={css.error}>{error}</p>
       </form>
     </main>
   );
