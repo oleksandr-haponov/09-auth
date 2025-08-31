@@ -1,5 +1,5 @@
 {
-  "name": "06-notehub-nextjs",
+  "name": "09-auth",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -14,7 +14,7 @@
     "axios": "^1.11.0",
     "cookie": "^1.0.2",
     "formik": "^2.4.6",
-    "next": "15.4.4",
+    "next": "^15.5.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hot-toast": "^2.5.2",
