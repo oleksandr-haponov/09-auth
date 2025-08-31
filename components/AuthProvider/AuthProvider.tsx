@@ -7,51 +7,59 @@ import { useAuthStore } from "@/lib/store/authStore";
 import type { User } from "@/types/user";
 import css from "./AuthProvider.module.css";
 
-const isPrivate = (p: string) => p.startsWith("/profile") || p.startsWith("/notes");
-const isAuthRoute = (p: string) => p === "/sign-in" || p === "/sign-up";
+const PRIVATE_PREFIXES = ["/profile", "/notes"];
+const AUTH_ROUTES = ["/sign-in", "/sign-up"];
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname() ?? "/";
+  const router = useRouter();
+
   const setUser = useAuthStore((s) => s.setUser);
   const clear = useAuthStore((s) => s.clearIsAuthenticated);
 
-  const gated = useMemo(() => isPrivate(pathname), [pathname]);
-  const authPage = useMemo(() => isAuthRoute(pathname), [pathname]);
+  const isPrivate = useMemo(() => PRIVATE_PREFIXES.some((p) => pathname.startsWith(p)), [pathname]);
+  const isAuthRoute = useMemo(() => AUTH_ROUTES.includes(pathname), [pathname]);
 
-  const [checking, setChecking] = useState(gated);
+  const [checking, setChecking] = useState(isPrivate);
 
   useEffect(() => {
-    let active = true;
-    (async () => {
-      if (!gated && !authPage) return; // перевіряємо тільки там, де потрібно
-      setChecking(gated);
+    let cancelled = false;
+
+    async function run() {
+      // проверяем только там, где нужно
+      if (!isPrivate && !isAuthRoute) return;
+
+      setChecking(isPrivate);
       try {
-        const ok = await checkSession(); // ← OAS: просто оновлює токени, без User
-        if (!active) return;
+        const ok = await checkSession(); // дергает /api/auth/session (нормализовано)
+        if (cancelled) return;
 
         if (ok) {
-          // отримуємо користувача з /users/me
+          // сессия валидна → получаем юзера
           const u: User = await getMe();
-          if (!active) return;
+          if (cancelled) return;
           setUser(u);
-          if (authPage) router.replace("/profile"); // авторизований не повинен бачити /sign-*
+
+          // авторизованному не показываем /sign-in, /sign-up
+          if (isAuthRoute) router.replace("/profile");
         } else {
-          // неавторизований
+          // сессии нет
           await logout().catch(() => {});
           clear();
-          if (gated) router.replace("/sign-in");
+          if (isPrivate) router.replace("/sign-in");
         }
       } finally {
-        if (active) setChecking(false);
+        if (!cancelled) setChecking(false);
       }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [gated, authPage, pathname, setUser, clear, router]);
+    }
 
-  if (gated && checking) {
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [isPrivate, isAuthRoute, pathname, setUser, clear, router]);
+
+  if (isPrivate && checking) {
     return (
       <div className={css.loaderWrap}>
         <div className={css.loader} aria-label="loading" />
