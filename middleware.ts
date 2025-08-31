@@ -2,27 +2,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const PRIVATE_PREFIXES = ["/profile", "/notes"] as const;
-const AUTH_ROUTES = ["/sign-in", "/sign-up"] as const;
 
 function isPrivatePath(pathname: string): boolean {
   return PRIVATE_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
-}
-function isAuthPath(pathname: string): boolean {
-  return AUTH_ROUTES.includes(pathname as (typeof AUTH_ROUTES)[number]);
-}
-
-/** Тихо дергаем наш API /api/auth/session c пробросом cookies */
-async function fetchSession(req: NextRequest): Promise<Response | null> {
-  try {
-    const url = new URL("/api/auth/session", req.nextUrl.origin);
-    const resp = await fetch(url.toString(), {
-      headers: { cookie: req.headers.get("cookie") ?? "", accept: "application/json" },
-      cache: "no-store",
-    });
-    return resp;
-  } catch {
-    return null;
-  }
 }
 
 /** Перекладываем Set-Cookie из ответа session в наш ответ (Domain игнорируем) */
@@ -31,7 +13,6 @@ function applySetCookieStrings(resp: NextResponse, setCookies: string[]) {
     if (!cookieStr) continue;
     const parts = cookieStr.split(";").map((p) => p.trim());
     const [nameValue, ...attrs] = parts;
-
     const eqIdx = nameValue.indexOf("=");
     if (eqIdx < 0) continue;
 
@@ -61,7 +42,6 @@ function applySetCookieStrings(resp: NextResponse, setCookies: string[]) {
         const vv = (v || "").toLowerCase();
         if (vv === "lax" || vv === "strict" || vv === "none") opts.sameSite = vv as any;
       }
-      // ВАЖНО: domain игнорируем — оставляем first-party куки
     }
 
     resp.cookies.set(name, value, opts);
@@ -69,42 +49,42 @@ function applySetCookieStrings(resp: NextResponse, setCookies: string[]) {
 }
 
 export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const { pathname, origin } = req.nextUrl;
 
-  const needsCheck = isPrivatePath(pathname) || isAuthPath(pathname);
-  if (!needsCheck) return NextResponse.next();
+  // Проверяем ТОЛЬКО приватные страницы
+  if (!isPrivatePath(pathname)) return NextResponse.next();
 
-  const sessionResp = await fetchSession(req);
-  const bodyText = sessionResp ? await sessionResp.clone().text() : "";
-  const isAuthed = !!sessionResp && sessionResp.ok && bodyText.trim() !== "";
+  // Узнаём сессию через наш API-роут (пробрасываем cookies)
+  const sessionUrl = new URL("/api/auth/session", origin);
+  const resp = await fetch(sessionUrl.toString(), {
+    headers: { cookie: req.headers.get("cookie") ?? "", accept: "application/json" },
+    cache: "no-store",
+  });
 
-  let res: NextResponse;
-  if (isPrivatePath(pathname) && !isAuthed) {
-    // Гость лезет в приват — отправим на логин
-    res = NextResponse.redirect(new URL("/sign-in", req.url));
-  } else if (isAuthPath(pathname) && isAuthed) {
-    // Авторизованный открывает /sign-in|/sign-up — ведём на профиль
-    res = NextResponse.redirect(new URL("/profile", req.url));
-  } else {
-    res = NextResponse.next();
+  // Авторизован, только если 200 и тело не пустое
+  const body = resp.ok ? (await resp.clone().text()).trim() : "";
+  const isAuthed = resp.ok && body !== "";
+
+  if (!isAuthed) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/sign-in";
+    return NextResponse.redirect(url);
   }
 
-  // Если /api/auth/session прислал Set-Cookie (например, обновил токены) — переложим их в ответ
-  if (sessionResp) {
-    const setCookies =
-      ((sessionResp.headers as any).getSetCookie?.() as string[] | undefined) ??
-      (sessionResp.headers.get("set-cookie")
-        ? [sessionResp.headers.get("set-cookie") as string]
-        : []);
-    if (setCookies?.length) {
-      applySetCookieStrings(res, setCookies);
-      res.headers.set("Cache-Control", "no-store");
-    }
+  // Пропускаем дальше и прокидываем Set-Cookie (если бекенд обновил токены)
+  const out = NextResponse.next();
+  const setCookies =
+    ((resp.headers as any).getSetCookie?.() as string[] | undefined) ??
+    (resp.headers.get("set-cookie") ? [resp.headers.get("set-cookie") as string] : []);
+  if (setCookies?.length) {
+    applySetCookieStrings(out, setCookies);
+    out.headers.set("Cache-Control", "no-store");
   }
 
-  return res;
+  return out;
 }
 
+// Матчим только приватные пути
 export const config = {
-  matcher: ["/profile/:path*", "/notes/:path*", "/sign-in", "/sign-up"],
+  matcher: ["/profile/:path*", "/notes/:path*"],
 };

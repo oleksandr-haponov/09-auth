@@ -7,11 +7,12 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/store/authStore";
 import css from "./page.module.css";
 
-// без any — вытаскиваем сообщение об ошибке
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
-  const r = (err as { response?: { data?: { message?: string } } })?.response;
-  return r?.data?.message || "Registration failed";
+  const r = (err as { response?: { data?: { message?: string }; status?: number } })?.response;
+  const status = r?.status;
+  const msg = r?.data?.message || "Registration failed";
+  return status ? `${msg} (HTTP ${status})` : msg;
 }
 
 export default function SignUpPage() {
@@ -20,7 +21,6 @@ export default function SignUpPage() {
   const isAuthed = useAuthStore((s) => s.isAuthenticated);
   const [error, setError] = useState("");
 
-  // Если уже авторизованы — уводим на профиль; иначе пробуем подтянуть активную сессию
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -35,36 +35,41 @@ export default function SignUpPage() {
           setUser(u);
           router.replace("/profile");
         }
-      } catch {
-        // ignore
-      }
+      } catch {}
     })();
     return () => {
       mounted = false;
     };
   }, [isAuthed, router, setUser]);
 
-  const { mutate, isPending } = useMutation({
+  const { mutateAsync, isPending } = useMutation({
     mutationFn: (p: RegisterPayload) => register(p),
-    onSuccess: (user) => {
-      // по ТЗ — редирект на /profile; заодно кладём user в Zustand
-      setUser(user);
-      router.prefetch?.("/profile");
-      router.replace("/profile");
-    },
-    onError: (err: unknown) => {
-      setError(getErrorMessage(err));
-    },
   });
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
+
     const fd = new FormData(e.currentTarget);
     const email = String(fd.get("email") || "").trim();
     const password = String(fd.get("password") || "").trim();
     if (!email || !password) return;
-    mutate({ email, password });
+
+    try {
+      const created = await mutateAsync({ email, password });
+      // важный шаг: валидируем/рефрешим сессию, чтобы куки точно были к серверному рендеру /profile
+      const fromSession = await fetchSession();
+      setUser(fromSession ?? created);
+      router.prefetch?.("/profile");
+      router.replace("/profile");
+    } catch (err: any) {
+      const status = err?.response?.status as number | undefined;
+      if (status === 409) {
+        router.replace(`/sign-in?email=${encodeURIComponent(email)}`);
+        return;
+      }
+      setError(getErrorMessage(err));
+    }
   }
 
   if (isAuthed) return null;

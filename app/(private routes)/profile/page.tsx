@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { getMeServer } from "@/lib/api/serverApi";
 import css from "./page.module.css";
 
@@ -18,8 +19,20 @@ export const metadata: Metadata = {
 };
 
 export default async function ProfilePage() {
-  const cookieHeader = (await headers()).get("cookie") ?? undefined; // ← здесь было без await
-  const user = await getMeServer(cookieHeader);
+  const cookieHeader = (await headers()).get("cookie") ?? undefined;
+
+  let user: {
+    email: string;
+    username?: string | null;
+    avatar?: string | null;
+    avatarUrl?: string | null;
+  };
+  try {
+    user = await getMeServer(cookieHeader);
+  } catch {
+    // если куки ещё не применились или сессия истекла — уводим на логин
+    redirect("/sign-in");
+  }
 
   const username = user.username || user.email || "your_username";
   const email = user.email || "your_email@example.com";

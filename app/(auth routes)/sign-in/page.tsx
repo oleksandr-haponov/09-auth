@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { login, session as fetchSession, type Credentials } from "@/lib/api/clientApi";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/store/authStore";
 import css from "./page.module.css";
 
-// безопасный парсер сообщения об ошибке без any
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   const r = (err as { response?: { data?: { message?: string } } })?.response;
@@ -16,11 +15,16 @@ function getErrorMessage(err: unknown): string {
 
 export default function SignInPage() {
   const router = useRouter();
+  const sp = useSearchParams();
+  const initialEmail = sp.get("email") ?? "";
+
+  const emailRef = useRef<HTMLInputElement | null>(null);
+  const passwordRef = useRef<HTMLInputElement | null>(null);
+
   const setUser = useAuthStore((s) => s.setUser);
   const isAuthed = useAuthStore((s) => s.isAuthenticated);
   const [error, setError] = useState("");
 
-  // если уже авторизованы — редирект; иначе пробуем подтянуть сессию
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -34,15 +38,20 @@ export default function SignInPage() {
         if (u) {
           setUser(u);
           router.replace("/profile");
+        } else if (initialEmail) {
+          // если имейл пришёл из /sign-up (409) — фокус на пароль
+          passwordRef.current?.focus();
+        } else {
+          emailRef.current?.focus();
         }
       } catch {
-        // ignore
+        emailRef.current?.focus();
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [isAuthed, router, setUser]);
+  }, [isAuthed, router, setUser, initialEmail]);
 
   const { mutate, isPending } = useMutation({
     mutationFn: (p: Credentials) => login(p),
@@ -66,7 +75,6 @@ export default function SignInPage() {
     });
   }
 
-  // Гард: если уже авторизованы — ничего не рендерим
   if (isAuthed) return null;
 
   return (
@@ -77,13 +85,14 @@ export default function SignInPage() {
         <div className={css.formGroup}>
           <label htmlFor="email">Email</label>
           <input
+            ref={emailRef}
             id="email"
             type="email"
             name="email"
             className={css.input}
             autoComplete="username"
             required
-            autoFocus
+            defaultValue={initialEmail}
             disabled={isPending}
             onInput={() => error && setError("")}
           />
@@ -92,6 +101,7 @@ export default function SignInPage() {
         <div className={css.formGroup}>
           <label htmlFor="password">Password</label>
           <input
+            ref={passwordRef}
             id="password"
             type="password"
             name="password"
