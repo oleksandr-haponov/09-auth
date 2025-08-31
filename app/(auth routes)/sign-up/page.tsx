@@ -51,7 +51,6 @@ export default function SignUpPage() {
     // Клиентская валидация под типичные требования бэка
     if (!email) return setError("Email is required");
     if (password.length < 8) return setError("Password must be at least 8 characters");
-    // возможно, API требует ещё цифру/букву, но это уже покажет сервер
 
     mutate({ email, password });
   }
@@ -84,7 +83,8 @@ export default function SignUpPage() {
           </button>
         </div>
 
-        <p className={css.error}>{error}</p>
+        {/* CHANGED: статичний текст відповідно до ТЗ */}
+        <p className={css.error}>Error</p>
       </form>
     </main>
   );
