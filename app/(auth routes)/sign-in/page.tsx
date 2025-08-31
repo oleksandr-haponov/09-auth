@@ -13,30 +13,36 @@ export default function SignInPage() {
   const isAuthed = useAuthStore((s) => s.isAuthenticated);
   const [error, setError] = useState("");
 
-  // 1) если уже авторизован — уводим сразу
+  // Единый эффект: если уже авторизованы — редирект; иначе пытаемся подтянуть сессию из cookies
   useEffect(() => {
-    if (isAuthed) {
-      router.replace("/profile");
-    }
-  }, [isAuthed, router]);
-
-  // 2) подстраховка: проверяем сессию на маунте (если Zustand пустой, но кука уже есть)
-  useEffect(() => {
+    let mounted = true;
     (async () => {
-      const u = await fetchSession();
-      if (u) {
-        setUser(u);
+      if (isAuthed) {
         router.replace("/profile");
+        return;
+      }
+      try {
+        const u = await fetchSession();
+        if (!mounted) return;
+        if (u) {
+          setUser(u);
+          router.replace("/profile");
+        }
+      } catch {
+        // игнорируем 401/сетевые ошибки
       }
     })();
-  }, [router, setUser]);
+    return () => {
+      mounted = false;
+    };
+  }, [isAuthed, router, setUser]);
 
   const { mutate, isPending } = useMutation({
     mutationFn: (p: Credentials) => login(p),
     onSuccess: (user) => {
-      setUser(user); // заполнить Zustand
-      router.prefetch("/profile"); // микро-ускорение
-      router.replace("/profile"); // и увести
+      setUser(user); // записать в Zustand
+      router.prefetch?.("/profile"); // микро-ускорение (опционально)
+      router.replace("/profile"); // редирект
     },
     onError: (e: any) => {
       const msg = e?.response?.data?.message || e?.message || "Login failed";
@@ -75,7 +81,9 @@ export default function SignInPage() {
           </button>
         </div>
 
-        <p className={css.error}>{error}</p>
+        <p className={css.error} aria-live="polite">
+          {error}
+        </p>
       </form>
     </main>
   );

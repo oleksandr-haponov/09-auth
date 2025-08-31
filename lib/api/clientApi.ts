@@ -25,10 +25,15 @@ export async function logout(): Promise<void> {
   await api.post("/auth/logout");
 }
 
-/** GET /auth/session — может вернуть 200 без тела */
+/** GET /auth/session — может вернуть 200 без тела или 204 */
 export async function session(): Promise<User | null> {
   const res = await api.get<User | null>("/auth/session");
-  return res.data ?? null;
+  if (res.status === 204) return null;
+  const d = res.data as unknown;
+  // Нормализуем: пустая строка/undefined/null => null
+  if (d == null) return null;
+  if (typeof d !== "object") return null;
+  return d as User;
 }
 
 /** GET /users/me */

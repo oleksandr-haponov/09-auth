@@ -1,9 +1,8 @@
 // lib/api/axios.ts
 import axios, { AxiosInstance } from "axios";
 
-const isBrowser = typeof window !== "undefined";
-const site = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
-const baseURL = isBrowser ? "/api" : site ? `${site}/api` : "/api";
+const origin = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
+const baseURL = origin ? `${origin}/api` : "/api";
 
 const api: AxiosInstance = axios.create({
   baseURL,
