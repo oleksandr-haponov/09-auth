@@ -4,7 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 const PUBLIC_ROUTES = ["/sign-in", "/sign-up"];
 const PRIVATE_PREFIXES = ["/profile", "/notes"];
 
-/** Зовём наш API для тихого продления и возвращаем массив Set-Cookie, если они были */
+// Универсальная проверка наличия кук по названию (без завязки на точное имя)
+function hasCookie(header: string, names: string[]) {
+  const re = new RegExp(`(^|;\\s*)(${names.join("|")})=`, "i");
+  return re.test(header);
+}
+
+/** Тихо дергаем наш API /api/auth/session и возвращаем массив Set-Cookie */
 async function refreshViaApi(req: NextRequest): Promise<string[]> {
   try {
     const url = new URL("/api/auth/session", req.nextUrl.origin);
@@ -12,18 +18,16 @@ async function refreshViaApi(req: NextRequest): Promise<string[]> {
       headers: { cookie: req.headers.get("cookie") ?? "" },
       cache: "no-store",
     });
-    // В ряде сред у Headers есть getSetCookie; иначе — одиночный 'set-cookie'
     const fromApi =
       ((resp.headers as any).getSetCookie?.() as string[] | undefined) ??
       (resp.headers.get("set-cookie") ? [resp.headers.get("set-cookie") as string] : []);
-    // Успешное продление — когда действительно пришли новые cookie
     return fromApi ?? [];
   } catch {
     return [];
   }
 }
 
-/** Простенький парсер одного Set-Cookie в name, value, opts */
+/** Переносим Set-Cookie в реальный ответ (Domain не копируем!) */
 function applySetCookieStrings(resp: NextResponse, setCookies: string[]) {
   for (const cookieStr of setCookies) {
     const parts = cookieStr.split(";").map((p) => p.trim());
@@ -37,7 +41,6 @@ function applySetCookieStrings(resp: NextResponse, setCookies: string[]) {
       expires?: Date;
       maxAge?: number;
       path?: string;
-      domain?: string;
       httpOnly?: boolean;
       secure?: boolean;
       sameSite?: "lax" | "strict" | "none";
@@ -47,10 +50,11 @@ function applySetCookieStrings(resp: NextResponse, setCookies: string[]) {
       const [kRaw, ...rest] = raw.split("=");
       const k = kRaw.toLowerCase();
       const v = rest.join("=");
+
       if (k === "path") opts.path = v || "/";
       else if (k === "expires") opts.expires = v ? new Date(v) : undefined;
       else if (k === "max-age") opts.maxAge = v ? Number(v) : undefined;
-      else if (k === "domain") opts.domain = v || undefined;
+      // ВАЖНО: domain игнорируем (оставляем first-party)
       else if (k === "httponly") opts.httpOnly = true;
       else if (k === "secure") opts.secure = true;
       else if (k === "samesite") {
@@ -69,49 +73,45 @@ export async function middleware(req: NextRequest) {
   const isPrivate = PRIVATE_PREFIXES.some((p) => pathname.startsWith(p));
   const isPublicAuth = PUBLIC_ROUTES.includes(pathname);
 
-  // Быстрые флаги по кукам запроса
-  const access = req.cookies.get("accessToken")?.value;
-  const refresh = req.cookies.get("refreshToken")?.value;
+  // Неинтересные маршруты пропускаем
+  if (!isPrivate && !isPublicAuth) return NextResponse.next();
 
-  // Не интересующие нас маршруты просто пропускаем
-  if (!isPrivate && !isPublicAuth) {
-    return NextResponse.next();
-  }
+  const cookieHeader = req.headers.get("cookie") || "";
+  const hasAccess = hasCookie(cookieHeader, ["accessToken", "access", "token"]);
+  const hasRefresh = hasCookie(cookieHeader, ["refreshToken", "refresh"]);
 
-  // --- Частный случай: у нас есть access — считаем авторизованным
-  if (access) {
+  // Уже есть access → считаем авторизованным
+  if (hasAccess) {
     if (isPublicAuth) {
-      // автор — на публичную (sign-in/up) не пускаем
       return NextResponse.redirect(new URL("/profile", req.url));
     }
     return NextResponse.next();
   }
 
-  // --- Нет access: пробуем silent auth по refresh (если он есть)
-  if (refresh) {
+  // Нет access, но есть refresh → тихо продлеваем
+  if (hasRefresh) {
     const setCookies = await refreshViaApi(req);
     if (setCookies.length > 0) {
-      // Продлили — приклеим Set-Cookie к реальному ответу
       if (isPublicAuth) {
         const res = NextResponse.redirect(new URL("/profile", req.url));
         applySetCookieStrings(res, setCookies);
+        res.headers.set("Cache-Control", "no-store");
         return res;
       }
       if (isPrivate) {
         const res = NextResponse.next();
         applySetCookieStrings(res, setCookies);
+        res.headers.set("Cache-Control", "no-store");
         return res;
       }
     }
-    // refresh был, но продление не удалось — считаем неавторизованным, падаем ниже
+    // refresh был, но продление не удалось → пойдём дальше как неавторизованные
   }
 
-  // --- Неавторизованный:
+  // Неавторизованный:
   if (isPrivate) {
-    // приватный → на логин
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }
-  // публичный → пропускаем
   return NextResponse.next();
 }
 

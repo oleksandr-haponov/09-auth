@@ -46,9 +46,9 @@
 
 .usernameWrapper {
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid; /* было: display:flex */
+  gap: 8px; /* аккуратный отступ между label и input */
+  align-items: stretch;
 }
 
 .header {

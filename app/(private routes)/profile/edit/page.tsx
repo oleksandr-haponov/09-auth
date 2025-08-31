@@ -1,4 +1,3 @@
-// app/(private routes)/profile/edit/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -14,10 +13,16 @@ export default function ProfileEditPage() {
   const userFromStore = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
 
+  // локальная копия юзера (если уже есть в сторе — берём её)
   const [user, setUserLocal] = useState<User | null>(userFromStore ?? null);
-  const [username, setUsername] = useState<string>(userFromStore?.username ?? ""); // ← FIX
+
+  // ФОЛБЭК: если username нет — берём email (как на макете)
+  const initialName = userFromStore?.username?.trim() || userFromStore?.email || "";
+
+  const [username, setUsername] = useState<string>(initialName);
   const [saving, setSaving] = useState(false);
 
+  // Если в сторе юзера ещё нет — подтянуть /users/me
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -27,9 +32,12 @@ export default function ProfileEditPage() {
         if (!cancelled) {
           setUserLocal(u);
           setUser(u);
-          setUsername(u.username ?? ""); // ← FIX
+          const name = u.username?.trim() || u.email || "";
+          setUsername(name);
         }
-      } catch {}
+      } catch {
+        // игнорируем — страница приватная и защищена middleware/AuthProvider
+      }
     })();
     return () => {
       cancelled = true;
@@ -38,11 +46,12 @@ export default function ProfileEditPage() {
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!username.trim()) return;
+    const next = username.trim();
+    if (!next) return;
 
     setSaving(true);
     try {
-      const updated = await updateMe({ username: username.trim() });
+      const updated = await updateMe({ username: next });
       setUser(updated);
       router.replace("/profile");
     } finally {
