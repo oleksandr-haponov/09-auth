@@ -10,47 +10,59 @@ export type LoginPayload = Credentials;
 
 /** POST /auth/register */
 export async function register(payload: RegisterPayload): Promise<User> {
-  // CHANGED: добавлен withCredentials
-  const { data } = await api.post<User>("/auth/register", payload, { withCredentials: true });
+  const { data } = await api.post<User>("/auth/register", payload, {
+    withCredentials: true,
+  });
   return data;
 }
 
 /** POST /auth/login */
 export async function login(payload: LoginPayload): Promise<User> {
-  // CHANGED: добавлен withCredentials
-  const { data } = await api.post<User>("/auth/login", payload, { withCredentials: true });
+  const { data } = await api.post<User>("/auth/login", payload, {
+    withCredentials: true,
+  });
   return data;
 }
 
 /** POST /auth/logout */
 export async function logout(): Promise<void> {
-  // CHANGED: добавлен withCredentials
   await api.post("/auth/logout", null, { withCredentials: true });
 }
 
-/** GET /auth/session — может вернуть 200 без тела или 204 */
 export async function session(): Promise<User | null> {
-  // CHANGED: добавлен withCredentials
-  const res = await api.get<User | null>("/auth/session", { withCredentials: true });
+  const res = await api.get<User | null>("/auth/session", {
+    withCredentials: true,
+  });
   if (res.status === 204) return null;
   const d = res.data as unknown;
-  // Нормализуем: пустая строка/undefined/null => null
   if (d == null) return null;
   if (typeof d !== "object") return null;
   return d as User;
 }
 
+/** NEW: boolean-проверка/рефреш сессии по OAS */
+export async function checkSession(): Promise<boolean> {
+  try {
+    const res = await api.get("/auth/session", { withCredentials: true });
+    // За OAS: 200 означает успешный рефреш (в т.ч. Set-Cookie)
+    return res.status === 200;
+  } catch {
+    // 400/401 -> нет активной сессии
+    return false;
+  }
+}
+
 /** GET /users/me */
 export async function me(): Promise<User> {
-  // CHANGED: добавлен withCredentials
   const { data } = await api.get<User>("/users/me", { withCredentials: true });
   return data;
 }
 
 /** PATCH /users/me */
 export async function updateMe(patch: { username: string }): Promise<User> {
-  // CHANGED: добавлен withCredentials
-  const { data } = await api.patch<User>("/users/me", patch, { withCredentials: true });
+  const { data } = await api.patch<User>("/users/me", patch, {
+    withCredentials: true,
+  });
   return data;
 }
 

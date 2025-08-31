@@ -2,58 +2,45 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { session as fetchSession, logout } from "@/lib/api/clientApi";
+import { checkSession, me as getMe, logout } from "@/lib/api/clientApi";
 import { useAuthStore } from "@/lib/store/authStore";
-import type { User } from "@/types/user"; // CHANGED: для type guard
+import type { User } from "@/types/user";
 import css from "./AuthProvider.module.css";
 
-const isPrivatePath = (p: string) => p.startsWith("/profile") || p.startsWith("/notes");
+const isPrivate = (p: string) => p.startsWith("/profile") || p.startsWith("/notes");
 const isAuthRoute = (p: string) => p === "/sign-in" || p === "/sign-up";
-
-// CHANGED: Валидируем, что это действительно User
-function isValidUser(u: unknown): u is User {
-  return (
-    !!u &&
-    typeof u === "object" &&
-    (typeof (u as any).email === "string" ||
-      typeof (u as any).id === "string" ||
-      typeof (u as any).userName === "string")
-  );
-}
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const rawPath = usePathname();
-  const pathname = rawPath ?? "/"; // CHANGED: подстраховка
+  const pathname = usePathname() ?? "/";
   const setUser = useAuthStore((s) => s.setUser);
   const clear = useAuthStore((s) => s.clearIsAuthenticated);
 
-  const gated = useMemo(() => isPrivatePath(pathname), [pathname]);
+  const gated = useMemo(() => isPrivate(pathname), [pathname]);
   const authPage = useMemo(() => isAuthRoute(pathname), [pathname]);
 
-  // CHANGED: показываем лоадер только на приватных маршрутах
   const [checking, setChecking] = useState(gated);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      // перезапускаем проверку при смене маршрута
+      if (!gated && !authPage) return; // перевіряємо тільки там, де потрібно
       setChecking(gated);
       try {
-        const candidate = await fetchSession();
+        const ok = await checkSession(); // ← OAS: просто оновлює токени, без User
         if (!active) return;
 
-        if (isValidUser(candidate)) {
-          setUser(candidate);
-          if (authPage) router.replace("/profile"); // авторизован? уводим со /sign-(in|up)
+        if (ok) {
+          // отримуємо користувача з /users/me
+          const u: User = await getMe();
+          if (!active) return;
+          setUser(u);
+          if (authPage) router.replace("/profile"); // авторизований не повинен бачити /sign-*
         } else {
-          if (gated) {
-            await logout().catch(() => {});
-            clear();
-            router.replace("/sign-in");
-          } else {
-            clear();
-          }
+          // неавторизований
+          await logout().catch(() => {});
+          clear();
+          if (gated) router.replace("/sign-in");
         }
       } finally {
         if (active) setChecking(false);
@@ -62,8 +49,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     return () => {
       active = false;
     };
-    // Именно от pathname (через gated/authPage) зависит проверка
-  }, [pathname, gated, authPage, router, setUser, clear]);
+  }, [gated, authPage, pathname, setUser, clear, router]);
 
   if (gated && checking) {
     return (
