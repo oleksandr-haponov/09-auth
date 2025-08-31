@@ -7,13 +7,20 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/store/authStore";
 import css from "./page.module.css";
 
+// NEW: безопасный парсер сообщения об ошибке без any
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  const r = (err as { response?: { data?: { message?: string } } })?.response;
+  return r?.data?.message || "Login failed";
+}
+
 export default function SignInPage() {
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
   const isAuthed = useAuthStore((s) => s.isAuthenticated);
   const [error, setError] = useState("");
 
-  // Единый эффект: если уже авторизованы — редирект; иначе пытаемся подтянуть сессию из cookies
+  // как было: если уже авторизованы — редирект; иначе пробуем подтянуть сессию
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -29,7 +36,7 @@ export default function SignInPage() {
           router.replace("/profile");
         }
       } catch {
-        // игнорируем 401/сетевые ошибки
+        // ignore
       }
     })();
     return () => {
@@ -40,13 +47,13 @@ export default function SignInPage() {
   const { mutate, isPending } = useMutation({
     mutationFn: (p: Credentials) => login(p),
     onSuccess: (user) => {
-      setUser(user); // записать в Zustand
-      router.prefetch?.("/profile"); // микро-ускорение (опционально)
-      router.replace("/profile"); // редирект
+      setUser(user);
+      router.prefetch?.("/profile");
+      router.replace("/profile");
     },
-    onError: (e: any) => {
-      const msg = e?.response?.data?.message || e?.message || "Login failed";
-      setError(String(msg));
+    // CHANGED: тип err -> unknown, извлечение без any
+    onError: (err: unknown) => {
+      setError(getErrorMessage(err));
     },
   });
 
@@ -81,9 +88,8 @@ export default function SignInPage() {
           </button>
         </div>
 
-        <p className={css.error} aria-live="polite">
-          {error}
-        </p>
+        {/* CHANGED: убран aria-live для точного совпадения с ТЗ */}
+        <p className={css.error}>{error}</p>
       </form>
     </main>
   );
