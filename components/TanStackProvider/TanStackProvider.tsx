@@ -1,17 +1,15 @@
-"use client";
+'use client'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useState } from 'react'
 
-import { PropsWithChildren, useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-export default function TanStackProvider({ children }: PropsWithChildren) {
-  const [client] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 10_000 },
-          mutations: { retry: 1 },
-        },
-      }),
-  );
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+type Props = {
+  children: React.ReactNode
 }
+
+const TanStackProvider = ({ children }: Props) => {
+  const [qClient] = useState(() => new QueryClient())
+
+  return <QueryClientProvider client={qClient}>{children}</QueryClientProvider>
+}
+
+export default TanStackProvider;

@@ -1,37 +1,55 @@
-// app/layout.tsx
-import type { Metadata, Viewport } from "next";
-import "./globals.css";
+import type { Metadata } from "next";
+import { Roboto } from 'next/font/google';
 import Header from "@/components/Header/Header";
 import Footer from "@/components/Footer/Footer";
+import { Toaster } from "react-hot-toast";
 import TanStackProvider from "@/components/TanStackProvider/TanStackProvider";
+import AuthProvider from '@/components/AuthProvider/AuthProvider';
+import "./globals.css";
+
+const robotoSans = Roboto({
+  subsets: ['latin'], 
+  weight: ['400', '700'],
+  variable: '--font-roboto', 
+  display: 'swap', 
+});
 
 export const metadata: Metadata = {
-  title: {
-    default: "NoteHub",
-    template: "%s | NoteHub",
-  },
-  description: "Notes manager with auth (Next.js App Router)",
-  icons: { icon: "/favicon.ico" },
-};
+  title: "NoteHub App",
+  description: "NoteHub is a modern web app to take, organize, and manage your notes with ease.",
+  openGraph: {
+      title: "NoteHub App",
+      description: "NoteHub is a modern web app to take, organize, and manage your notes with ease.",
+      url: "https://notehub.com",
+      siteName: "NoteHub",
+      images: [
+        {
+          url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
+          width: 1200,
+          height: 630,
+        },
+      ],
+    },
+}
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-};
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+  modal
+}: Readonly<{
+  children: React.ReactNode,
+  modal: React.ReactNode,
+}>) {
   return (
     <html lang="en">
-      <body>
-        {/* a11y: быстрый переход к основному контенту */}
-        <a href="#main" className="visually-hidden-focusable">
-          Skip to content
-        </a>
-
+      <body className={`${robotoSans.variable}`}>
         <TanStackProvider>
-          <Header />
-          <main id="main">{children}</main>
-          <Footer />
+          <AuthProvider>
+            <Header />
+            {children}
+            {modal}
+            <Toaster position="top-right" />
+            <Footer />
+          </AuthProvider>
         </TanStackProvider>
       </body>
     </html>

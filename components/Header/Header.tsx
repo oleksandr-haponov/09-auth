@@ -1,27 +1,29 @@
-"use client";
-
 import Link from "next/link";
-import AuthNavigation from "@/components/AuthNavigation/AuthNavigation";
-import TagsMenu from "@/components/TagsMenu/TagsMenu";
+import TagsMenu from "../TagsMenu/TagsMenu";
+import { tags } from "@/types/note";
 import css from "./Header.module.css";
+import AuthNavigation from "../AuthNavigation/AuthNavigation";
 
-export default function Header() {
+export default async function Header() {
+
   return (
     <header className={css.header}>
-      <Link href="/" className={css.brand} aria-label="Home">
+      <Link className={css.headerLink} href="/" aria-label="Home">
         NoteHub
       </Link>
-      <nav className={css.navigation} aria-label="Main Navigation">
-        <ul className={css.navigationList}>
-          <li className={css.navigationItem}>
-            <Link href="/" prefetch={false} className={css.navigationLink}>
+      <nav aria-label="Main Navigation">
+        <ul className={css.navigation}>
+          <li>
+            <Link className={css.headerLink} href="/">
               Home
             </Link>
           </li>
-          <li className={css.navigationItem}>
-            <TagsMenu />
+          <li>
+            <TagsMenu tags={tags} />
           </li>
-          <AuthNavigation />
+          <li>
+            <AuthNavigation />
+          </li>
         </ul>
       </nav>
     </header>

@@ -1,34 +1,38 @@
-// eslint.config.mjs
-import next from "eslint-config-next";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+import { FlatCompat } from "@eslint/eslintrc";
 
-export default [
-  // Игноры — отдельным объектом
-  {
-    ignores: [
-      "**/node_modules/**",
-      "**/.next/**",
-      "**/.vercel/**",
-      "**/dist/**",
-      "**/out/**",
-      "**/coverage/**",
-    ],
-  },
+// Если у вас установлен eslint-config-prettier
+import prettierConfig from "eslint-config-prettier";
 
-  // Базовый конфиг Next
-  ...next(),
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-  // Глобальные правила проекта
-  {
-    rules: {
-      "@typescript-eslint/no-empty-object-type": ["warn", { allowObjectTypes: true }],
-    },
-  },
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+});
 
-  // Отключение правила для route handlers
-  {
-    files: ["app/api/**/route.ts"],
-    rules: {
-      "@typescript-eslint/no-empty-object-type": "off",
-    },
-  },
+const eslintConfig = [
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  prettierConfig,  // добавляем конфиг prettier как объект
 ];
+
+export default eslintConfig;
+
+
+// import { dirname } from "path";
+// import { fileURLToPath } from "url";
+// import { FlatCompat } from "@eslint/eslintrc";
+
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = dirname(__filename);
+
+// const compat = new FlatCompat({
+//   baseDirectory: __dirname,
+// });
+
+// const eslintConfig = [
+//   ...compat.extends("next/core-web-vitals", "next/typescript"), "prettier"
+// ];
+
+// export default eslintConfig;

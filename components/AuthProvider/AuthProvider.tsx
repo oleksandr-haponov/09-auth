@@ -1,76 +1,37 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { getSession, logout } from "@/lib/api/clientApi";
+import { checkSession, usersMe } from "@/lib/api/clientApi";
 import { useAuthStore } from "@/lib/store/authStore";
-import css from "./AuthProvider.module.css";
+import { useEffect } from "react";
 
-const PRIVATE_PREFIXES = ["/profile", "/notes"] as const;
-const AUTH_ROUTES = ["/sign-in", "/sign-up"] as const;
+type Props = {
+  children: React.ReactNode;
+};
 
-export default function AuthProvider({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname() ?? "/";
-  const router = useRouter();
-
-  const setUser = useAuthStore((s) => s.setUser);
-  const clear = useAuthStore((s) => s.clearIsAuthenticated);
-
-  const isPrivate = useMemo(() => {
-    // /profile и /profile/...; /notes и /notes/...
-    return PRIVATE_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
-  }, [pathname]);
-
-  const isAuthRoute = useMemo(
-    () => AUTH_ROUTES.includes(pathname as (typeof AUTH_ROUTES)[number]),
-    [pathname],
+const AuthProvider = ({ children }: Props) => {
+  const setUser = useAuthStore((state) => state.setUser);
+  const clearIsAuthenticated = useAuthStore(
+    (state) => state.clearIsAuthenticated
   );
 
-  const [checking, setChecking] = useState<boolean>(isPrivate);
-
+  //const pathname = usePathname();
   useEffect(() => {
-    let cancelled = false;
-
-    const run = async () => {
-      // Проверяем только auth/private маршруты
-      if (!isPrivate && !isAuthRoute) return;
-
-      setChecking(isPrivate);
-      try {
-        // /api/auth/session: 200 c объектом -> User; 200 без тела/401 -> null
-        const user = await getSession();
-        if (cancelled) return;
-
-        if (user) {
-          setUser(user);
-          // Авторизованному на /sign-in|/sign-up делать нечего
-          if (isAuthRoute) router.replace("/profile");
-        } else {
-          // Нет сессии — приводим клиент в чистое состояние
-          try {
-            await logout(); // игнорируем 401/прочее
-          } catch {}
-          clear();
-          if (isPrivate) router.replace("/sign-in");
-        }
-      } finally {
-        if (!cancelled) setChecking(false);
+    const fetchUser = async () => {
+      // Перевіряємо сесію
+      const isAuthenticated = await checkSession();
+      if (isAuthenticated) {
+        // Якщо сесія валідна — отримуємо користувача
+        const user = await usersMe();
+        if (user) setUser(user);
+      } else {
+        // Якщо сесія невалідна — чистимо стан
+        clearIsAuthenticated();
       }
     };
+    fetchUser();
+  }, [setUser, clearIsAuthenticated]);
 
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [isPrivate, isAuthRoute, pathname, setUser, clear, router]);
+  return children;
+};
 
-  if (isPrivate && checking) {
-    return (
-      <div className={css.loaderWrap}>
-        <div className={css.loader} aria-label="loading" />
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-}
+export default AuthProvider;

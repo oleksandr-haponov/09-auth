@@ -1,79 +1,35 @@
-// app/api/auth/logout/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { upstream, JAR_COOKIE } from "../../_utils/utils";
+import { NextResponse } from 'next/server';
+import { api } from '../../api';
+import { cookies } from 'next/headers';
+import { isAxiosError } from 'axios';
+import { logErrorResponse } from '../../_utils/utils';
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export async function POST() {
+  try {
+    const cookieStore = await cookies();
 
-type CookieOptions = {
-  expires?: Date;
-  maxAge?: number;
-  path?: string;
-  // domain?: string; // ⟵ не переносим домен
-  httpOnly?: boolean;
-  secure?: boolean;
-  sameSite?: "lax" | "strict" | "none";
-};
+    const accessToken = cookieStore.get('accessToken')?.value;
+    const refreshToken = cookieStore.get('refreshToken')?.value;
 
-function setCookiesFromUpstream(response: NextResponse, setCookies: string[]) {
-  for (const cookieStr of setCookies) {
-    const parts = cookieStr.split(";").map((p) => p.trim());
-    const [nameValue, ...attrs] = parts;
-    const eqIdx = nameValue.indexOf("=");
-    if (eqIdx < 0) continue;
+    await api.post('auth/logout', null, {
+      headers: {
+        Cookie: `accessToken=${accessToken}; refreshToken=${refreshToken}`,
+      },
+    });
 
-    const name = nameValue.slice(0, eqIdx);
-    const value = nameValue.slice(eqIdx + 1);
+    cookieStore.delete('accessToken');
+    cookieStore.delete('refreshToken');
 
-    const opts: CookieOptions = {};
-    for (const raw of attrs) {
-      const [kRaw, ...rest] = raw.split("=");
-      const k = kRaw.toLowerCase();
-      const v = rest.join("=");
-      if (k === "path") opts.path = v || "/";
-      else if (k === "expires") opts.expires = v ? new Date(v) : undefined;
-      else if (k === "max-age") opts.maxAge = v ? Number(v) : undefined;
-      // else if (k === "domain") IGNORE — не переносим домен!
-      else if (k === "httponly") opts.httpOnly = true;
-      else if (k === "secure") opts.secure = true;
-      else if (k === "samesite") {
-        const vv = v?.toLowerCase();
-        if (vv === "lax" || vv === "strict" || vv === "none") opts.sameSite = vv;
-      }
+    return NextResponse.json({ message: 'Logged out successfully' }, { status: 200 });
+  } catch (error) {
+    if (isAxiosError(error)) {
+      logErrorResponse(error.response?.data);
+      return NextResponse.json(
+        { error: error.message, response: error.response?.data },
+        { status: error.status }
+      );
     }
-
-    response.cookies.set(name, value, opts);
+    logErrorResponse({ message: (error as Error).message });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-}
-
-export async function POST(_req: NextRequest) {
-  const res = await upstream("/auth/logout", { method: "POST" });
-
-  const contentType = res.headers.get("content-type") || "";
-  const isJson = contentType.includes("application/json");
-  const status = res.status;
-
-  const response =
-    status === 204
-      ? new NextResponse(null, { status })
-      : isJson
-        ? NextResponse.json(await res.json().catch(() => ({})), { status })
-        : new NextResponse(await res.text(), {
-            status,
-            headers: { "content-type": contentType || "text/plain; charset=utf-8" },
-          });
-
-  // Пробрасываем Set-Cookie без domain
-  const setCookieHeaderArray: string[] =
-    ((res.headers as any).getSetCookie?.() as string[] | undefined) ??
-    (res.headers.get("set-cookie") ? [res.headers.get("set-cookie") as string] : []);
-  if (setCookieHeaderArray.length) setCookiesFromUpstream(response, setCookieHeaderArray);
-
-  // Дополнительно подчистим локальные куки
-  response.cookies.delete(JAR_COOKIE);
-  response.cookies.delete("accessToken");
-  response.cookies.delete("refreshToken");
-
-  response.headers.set("Cache-Control", "no-store");
-  return response;
 }

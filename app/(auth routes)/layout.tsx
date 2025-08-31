@@ -1,8 +1,22 @@
-import { Suspense } from "react";
+"use client";
 
-export const revalidate = 0;
-export const dynamic = "force-dynamic";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-export default function AuthGroupLayout({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<div style={{ padding: 16 }}>Loading…</div>}>{children}</Suspense>;
+type Props = {
+  children: React.ReactNode;
+};
+
+export default function PublicLayout({ children }: Props) {
+  const [loading, setLoading] = useState(true);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    // refresh вызовет перезагрузку данных
+    router.refresh();
+    setLoading(false);
+  }, [router]);
+
+  return <> {loading ? <div> Loading... </div> : children} </>;
 }

@@ -1,24 +1,26 @@
 {
-  "name": "09-auth",
+  "name": "06-notehub-nextjs",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "lint:fix": "eslint . --fix",
-    "prepare": "husky install"
+    "lint": "next lint"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.85.5",
+    "@tanstack/query-core": "^5.85.5",
+    "@tanstack/react-query": "^5.85.0",
     "axios": "^1.11.0",
     "cookie": "^1.0.2",
-    "next": "15.5.2",
+    "formik": "^2.4.6",
+    "next": "15.4.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-hot-toast": "^2.5.2",
+    "react-paginate": "^8.3.0",
+    "use-debounce": "^10.0.5",
+    "yup": "^1.6.1",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
@@ -26,11 +28,9 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9.34.0",
-    "eslint-config-next": "^15.5.2",
+    "eslint": "^9",
+    "eslint-config-next": "15.4.4",
     "eslint-config-prettier": "^10.1.8",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.1.5",
     "prettier": "^3.6.2",
     "typescript": "^5"
   }

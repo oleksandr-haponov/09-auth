@@ -1,74 +1,58 @@
-import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
-import { notFound } from "next/navigation";
-import { headers } from "next/headers";
+// SSR компонент
+import type { Metadata } from "next";
+// import { fetchNotes } from "@/lib/api/clientApi";
 import NotesClient from "./Notes.client";
+import { fetchNotes } from "@/lib/api/serverApi";
 
-const VALID_TAGS = [
-  "All",
-  "Todo",
-  "Work",
-  "Events",
-  "Personal",
-  "Meeting",
-  "Shopping",
-  "Sport",
-  "Traveling",
-] as const;
-
-type PageProps = {
-  params: { slug?: string[] };
-  searchParams?: { q?: string; page?: string };
+type Props = {
+  params: Promise<{ slug?: string[] }>;
 };
 
-export const revalidate = 0;
-export const dynamic = "force-dynamic";
+// metadata
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const slug = (await params).slug || [];
+  const tag =
+    slug.length > 0 && slug[0].toLowerCase() !== "all" ? slug[0] : "All";
 
-export default async function FilterPage({ params, searchParams }: PageProps) {
-  const slugArr = params?.slug ?? [];
-  const tagRaw = slugArr[0] ?? "All";
-  if (!VALID_TAGS.includes(tagRaw as (typeof VALID_TAGS)[number])) notFound();
+  const pageTitle = `Notes – ${tag}`;
+  const pageDescription = `Filtered notes by tag: ${tag}`;
 
-  const tag = tagRaw === "All" ? null : tagRaw;
-  const q = typeof searchParams?.q === "string" ? searchParams.q : "";
-  const page = Number(typeof searchParams?.page === "string" ? searchParams.page : "1");
-
-  const h = await headers();
-  const envBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
-  const proto = h.get("x-forwarded-proto") ?? "https";
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const base = envBase || `${proto}://${host}`;
-
-  const qc = new QueryClient();
-
-  await qc.prefetchQuery({
-    queryKey: ["notes", { q, page, tag: tag ?? "" }],
-    queryFn: async () => {
-      const url = new URL("/api/notes", base);
-      if (q) url.searchParams.set("search", q);
-      if (page > 1) url.searchParams.set("page", String(page));
-      if (tag) url.searchParams.set("tag", tag);
-
-      const cookie = (await headers()).get("cookie") ?? "";
-      const res = await fetch(url.toString(), {
-        headers: { cookie, accept: "application/json" },
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        throw new Error(t || `Failed to fetch notes (${res.status})`);
-      }
-      const raw = await res.json().catch(() => null);
-      if (Array.isArray(raw)) return { notes: raw };
-      return {
-        notes: Array.isArray(raw?.notes) ? raw.notes : [],
-        totalPages: raw?.totalPages,
-      };
+  return {
+    title: pageTitle,
+    description: pageDescription,
+    openGraph: {
+      title: pageTitle,
+      description: pageDescription,
+      url: `https://notehub.com/notes/filter/${tag.toLowerCase()}`,
+      images: [
+        {
+          url: `https://ac.goit.global/fullstack/react/notehub-og-meta.jpg`,
+          width: 1200,
+          height: 630,
+          alt: "Notes preview",
+        },
+      ],
     },
-  });
+  };
+}
 
-  return (
-    <HydrationBoundary state={dehydrate(qc)}>
-      <NotesClient tag={tag} />
-    </HydrationBoundary>
-  );
+export default async function NotesSlugPage({ params }: Props) {
+  const slug = (await params).slug || []; // check (await params)
+  let tag: string | undefined = undefined;
+
+  if (slug.length > 0 && slug[0].toLowerCase() !== "all") {
+    tag = slug[0];
+  }
+
+  try {
+    const data = await fetchNotes("", 1, tag);
+
+    return <NotesClient initialData={data} tag={tag} />;
+  } catch (error) {
+    return (
+      <div>
+        <p>Something went wrong while fetching the notes.</p>
+      </div>
+    );
+  }
 }

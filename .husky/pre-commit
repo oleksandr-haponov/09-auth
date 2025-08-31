@@ -1,4 +1,0 @@
-#!/usr/bin/env sh
-
-# Minimal Husky v9+ hook (без legacy husky.sh)
-npx lint-staged

@@ -1,106 +1,47 @@
-/* === Theme tokens (при желании меняй один раз тут) === */
-:root {
-  --nav-fg: #fff;
-  --nav-fg-muted: #ddd;
+.navigationList {
+  list-style: none;       
+  margin: 0;
+  padding: 0;
+  
+  display: flex;          
+  align-items: center;    
+  gap: 1rem;              
 
-  --btn-border: #fff;
-  --btn-fg: #fff;
-  --btn-bg-hover: #fff;
-  --btn-fg-hover: #333;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .navigationItem *,
-  .navigationLink,
-  .logoutButton,
-  .userEmail {
-    transition: none !important;
-    animation: none !important;
-  }
-}
-
-/* Элемент списка навигации */
-.navigationItem {
-  display: flex;
-  align-items: center;
-  list-style: none;
-  gap: 8px;
-}
-
-/* Ссылки */
-.navigationLink {
-  display: inline-block; /* больше кликабельная зона */
-  text-decoration: none;
-  color: var(--nav-fg);
-  font-size: 1rem;
-  padding: 0.2rem 0.1rem;
-  min-height: 2rem;
-  line-height: 1.2;
-  transition: color 0.2s ease;
-}
-
-@media (hover: hover) {
-  .navigationLink:hover {
-    color: var(--nav-fg-muted);
-  }
-}
-
-.navigationLink:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
-}
-
-/* Email пользователя: защищаем верстку от длинных адресов */
 .userEmail {
-  color: var(--nav-fg);
+  color: white;
   margin-right: 0.5rem;
   font-size: 0.9rem;
-  max-width: 16ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-/* Кнопка Logout */
 .logoutButton {
   background: transparent;
-  border: 1px solid var(--btn-border);
-  color: var(--btn-fg);
+  border: 1px solid white;
+  color: white;
   padding: 0.3rem 0.6rem;
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.9rem;
-  user-select: none;
-  touch-action: manipulation;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    border-color 0.2s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-@media (hover: hover) {
-  .logoutButton:hover {
-    background-color: var(--btn-bg-hover);
-    color: var(--btn-fg-hover);
-  }
+.logoutButton:hover {
+  background-color: white;
+  color: #333;
 }
 
-.logoutButton:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
+.navigationItem {
+  display: flex;
+  align-items: center;
 }
 
-/* Disabled/aria-disabled состояния */
-.logoutButton[disabled],
-.logoutButton[aria-disabled="true"] {
-  opacity: 0.6;
-  cursor: not-allowed;
+.navigationLink {
+  text-decoration: none;
+  color: white;
+  font-size: 1rem;
 }
 
-/* High-contrast поддержка */
-@media (forced-colors: active) {
-  .navigationLink:focus-visible,
-  .logoutButton:focus-visible {
-    outline: 2px solid CanvasText;
-  }
+.navigationLink:hover {
+  color: #ddd;
 }

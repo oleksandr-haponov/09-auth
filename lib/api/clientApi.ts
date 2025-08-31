@@ -1,91 +1,88 @@
-// lib/api/clientApi.ts
-"use client";
 
-import api, { extractError } from "./api";
-import type { User } from "@/types/user";
+import { nextServer } from "./api";
+import type { Note, NewNoteData, LoginRequestData, RegisterRequestData, CheckSessionRequest } from "@/types/note";
+import type { User} from "@/types/user";
+import { NotesHttpResponse } from "../../types/note";
 
-/** Базовые креды */
-export type Credentials = { email: string; password: string };
-
-/** Алиасы типов, чтобы импорты на страницах совпадали */
-export type RegisterPayload = Credentials;
-export type LoginPayload = Credentials;
-
-function normalizeUser(d: unknown): User | null {
-  if (!d || typeof d !== "object") return null;
-  const u = d as Partial<User>;
-  if (typeof u.email === "string" && typeof u.username === "string") {
-    return u as User;
-  }
-  return null;
+export interface FetchNotesParams {
+  page?: number;
+  perPage?: number;
+  search?: string;
+  tag?: string | undefined;
 }
 
-/** POST /auth/register */
-export async function register(payload: RegisterPayload): Promise<User> {
-  try {
-    const { data } = await api.post<User>("/auth/register", payload);
-    return data;
-  } catch (err) {
-    throw new Error(extractError(err));
-  }
+// получаем список всех ноутсов
+export async function fetchNotes({
+  page = 1,
+  perPage = 12,
+  search = "",
+  tag = undefined,
+}: FetchNotesParams): Promise<NotesHttpResponse> {
+
+   const params = {
+      // генеруємо параметры
+      page, //  с документации
+      perPage, //  с документации
+      ...(search?.trim() ? { search } : {}),
+      tag,
+    }
+
+    const response = await nextServer.get("/notes", { params });
+  return response.data;
 }
 
-/** POST /auth/login */
-export async function login(payload: LoginPayload): Promise<User> {
-  try {
-    const { data } = await api.post<User>("/auth/login", payload);
-    return data;
-  } catch (err) {
-    throw new Error(extractError(err));
-  }
+export async function fetchNoteById(id: string): Promise<Note> {
+  const response = await nextServer.get<Note>(`/notes/${id}`, {});
+
+  return response.data;
 }
 
-/** POST /auth/logout */
-export async function logout(): Promise<void> {
-  try {
-    await api.post("/auth/logout");
-  } catch (err) {
-    throw new Error(extractError(err));
-  }
+export async function createNote(noteData: NewNoteData): Promise<Note> {
+  const response = await nextServer.post<Note>("/notes", noteData, {});
+  return response.data;
 }
 
-/** GET /auth/session — вернёт объект пользователя или null при 200 без тела */
-export async function session(): Promise<User | null> {
-  try {
-    const res = await api.get<User | undefined>("/auth/session");
-    return normalizeUser(res.data);
-  } catch {
-    // 401/403/прочее — считаем, что сессии нет
-    return null;
-  }
+export async function deleteNote(noteId: string): Promise<Note> {
+  const response = await nextServer.delete<Note>(`/notes/${noteId}`, {});
+
+  return response.data;
 }
 
-/** Boolean-проверка активной сессии */
-export async function checkSession(): Promise<boolean> {
-  const user = await session();
-  return !!user;
+// login
+export async function signIn (noteData: LoginRequestData): Promise<User> {
+const  response  = await nextServer.post<User>(`/auth/login`, noteData)
+return response.data;
 }
 
-/** GET /users/me */
-export async function me(): Promise<User> {
-  try {
-    const { data } = await api.get<User>("/users/me");
-    return data;
-  } catch (err) {
-    throw new Error(extractError(err));
-  }
+//sign up
+export async function signUp (payload: RegisterRequestData): Promise<User> {
+const  response  = await nextServer.post<User>(`/auth/register`, payload)
+return response.data;
 }
 
-/** PATCH /users/me */
-export async function updateMe(patch: { username: string }): Promise<User> {
-  try {
-    const { data } = await api.patch<User>("/users/me", patch);
-    return data;
-  } catch (err) {
-    throw new Error(extractError(err));
-  }
-}
+//checkSession
+export async function checkSession(): Promise<CheckSessionRequest> {
+  const response = await nextServer.get<CheckSessionRequest>('/auth/session');
+  return response.data;
+};
 
-/** Алиасы функций — удобно, если где-то ожидаются эти имена */
-export const getSession = session;
-export const getMe = me;
+// users/me
+export async function usersMe(): Promise<User> {
+  const { data } = await nextServer.get<User>('/users/me');
+  return data;
+};
+
+// logout
+export async function logout (): Promise<void> {
+  await nextServer.post('/auth/logout')
+};
+
+// edit user
+export async function editUser(payload: { username: string }): Promise<User> {
+  const { data } = await nextServer.patch<User>('/users/me', payload);
+  return data;
+};
+
+
+
+
