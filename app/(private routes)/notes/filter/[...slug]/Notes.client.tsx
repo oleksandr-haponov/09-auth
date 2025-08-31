@@ -4,25 +4,11 @@ import { useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { fetchNotes } from "@/lib/api";
+import type { Note } from "@/types/note";
 
-type Note = {
-  id: string;
-  title: string;
-  content: string;
-  tag: string;
-  createdAt?: string;
-  updatedAt?: string;
-};
+type NotesResponse = { notes: Note[]; totalPages?: number };
 
-type NotesResponse = {
-  notes: Note[];
-  totalPages?: number;
-};
-
-export type NotesClientProps = {
-  /** Тег из сегмента маршрута; null если “все” */
-  tag: string | null;
-};
+export type NotesClientProps = { tag: string | null };
 
 export default function NotesClient({ tag }: NotesClientProps) {
   const router = useRouter();
@@ -30,12 +16,11 @@ export default function NotesClient({ tag }: NotesClientProps) {
 
   const q = sp.get("q") ?? "";
   const page = Number(sp.get("page") ?? "1");
-  const normalizedTag = tag ?? ""; // важливо: як і на сервері для ключа
+  const normalizedTag = tag ?? "";
 
   const { data, isLoading, isError, error } = useQuery<NotesResponse>({
     queryKey: ["notes", { q, page, tag: normalizedTag }],
     queryFn: async () => {
-      // fetchNotes ожидает { search, page, tag }
       const raw: any = await fetchNotes({ search: q, page, tag: tag ?? undefined });
       if (Array.isArray(raw)) return { notes: raw };
       return {
@@ -43,7 +28,6 @@ export default function NotesClient({ tag }: NotesClientProps) {
         totalPages: raw?.totalPages,
       };
     },
-    // v5: вместо keepPreviousData
     placeholderData: (prev) => prev,
   });
 
@@ -65,10 +49,7 @@ export default function NotesClient({ tag }: NotesClientProps) {
       "Failed to load notes";
     return <p style={{ padding: 16, color: "#c00" }}>{msg}</p>;
   }
-
-  if (!notes.length) {
-    return <p style={{ padding: 16 }}>No notes found.</p>;
-  }
+  if (!notes.length) return <p style={{ padding: 16 }}>No notes found.</p>;
 
   return (
     <section style={{ width: "100%", maxWidth: 960, margin: "0 auto", padding: 16 }}>
