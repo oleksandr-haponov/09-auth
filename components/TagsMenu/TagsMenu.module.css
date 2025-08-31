@@ -1,0 +1,56 @@
+.menuContainer {
+  position: relative;
+  display: inline-block;
+}
+
+.menuButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.menuButton:hover,
+.menuButton:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.menuList {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  min-width: 180px;
+  padding: 8px 0;
+  list-style: none;
+  background: #2b2b2b;
+  color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  z-index: 1000;
+}
+
+.menuItem {
+  list-style: none;
+}
+
+.menuLink {
+  display: block;
+  padding: 10px 16px;
+  text-decoration: none;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.menuLink:hover,
+.menuLink:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}

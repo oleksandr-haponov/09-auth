@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import AuthNavigation from "@/components/AuthNavigation/AuthNavigation";
+import TagsMenu from "@/components/TagsMenu/TagsMenu"; // ← ДОДАНО
 import css from "./Header.module.css";
 
 export default function Header() {
@@ -18,10 +19,9 @@ export default function Header() {
           </Link>
         </li>
 
+        {/* ЗАМІНА: замість лінку на /notes показуємо випадаючий список тегів */}
         <li className={css.navigationItem}>
-          <Link href="/notes" prefetch={false} className={css.navigationLink}>
-            Notes
-          </Link>
+          <TagsMenu />
         </li>
 
         <AuthNavigation />
