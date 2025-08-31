@@ -1,3 +1,11 @@
+@media (prefers-reduced-motion: reduce) {
+  .mainContent *,
+  .profileCard * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 .mainContent {
   flex: 1;
   display: flex;
@@ -13,7 +21,7 @@
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   padding: 24px;
-  text-align: left; /* ← FIX: було 'le ft' */
+  text-align: left;
 }
 
 .formTitle {
@@ -21,18 +29,13 @@
   font-weight: 700;
   color: #1a1a1a;
   margin-bottom: 24px;
-  text-align: left;
-}
-
-.avatarWrapper {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 16px;
 }
 
 .avatar {
+  display: block;
   border-radius: 50%;
   object-fit: cover;
+  margin: 0 auto 16px;
 }
 
 .profileInfo {
@@ -46,35 +49,11 @@
 
 .usernameWrapper {
   width: 100%;
-  display: grid; /* было: display:flex */
-  gap: 8px; /* аккуратный отступ между label и input */
+  display: grid;
+  gap: 8px;
   align-items: stretch;
 }
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.editProfileButton {
-  padding: 8px 16px;
-  font-size: 16px;
-  font-weight: 600;
-  background-color: #0d6efd;
-  color: white;
-  border-radius: 6px;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.editProfileButton:hover {
-  background-color: #0b5ed7;
-}
-
-/* --- added for /profile/edit page --- */
 .input {
   width: 100%;
   padding: 10px 12px;
@@ -82,11 +61,20 @@
   border: 1px solid #cfd4da;
   border-radius: 8px;
   outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
-.input:focus {
+.input:focus-visible {
   border-color: #0d6efd;
   box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.12);
+  outline: none;
+}
+
+.input:disabled {
+  background-color: #f1f3f5;
+  cursor: not-allowed;
 }
 
 .actions {
@@ -96,19 +84,27 @@
   margin-top: 8px;
 }
 
-.saveButton {
+.saveButton,
+.cancelButton {
   padding: 10px 16px;
   font-size: 16px;
-  background-color: #0d6efd;
-  color: #fff;
-  border: none;
   border-radius: 8px;
   cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
   transition: background-color 0.2s ease;
 }
 
-.saveButton:hover {
-  background-color: #0b5ed7;
+.saveButton {
+  background-color: #0d6efd;
+  color: #fff;
+  border: none;
+}
+
+@media (hover: hover) {
+  .saveButton:hover {
+    background-color: #0b5ed7;
+  }
 }
 
 .saveButton:disabled {
@@ -117,18 +113,15 @@
 }
 
 .cancelButton {
-  padding: 10px 16px;
-  font-size: 16px;
   background-color: #e9ecef;
   color: #1a1a1a;
   border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
 }
 
-.cancelButton:hover {
-  background-color: #dde2e6;
+@media (hover: hover) {
+  .cancelButton:hover {
+    background-color: #dde2e6;
+  }
 }
 
 .error {
@@ -136,4 +129,5 @@
   font-size: 12px;
   margin-top: 4px;
   text-align: center;
+  min-height: 1.25em;
 }

@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { checkSession, me as getMe, logout } from "@/lib/api/clientApi";
+import { getSession, logout } from "@/lib/api/clientApi";
 import { useAuthStore } from "@/lib/store/authStore";
-import type { User } from "@/types/user";
 import css from "./AuthProvider.module.css";
 
-const PRIVATE_PREFIXES = ["/profile", "/notes"];
-const AUTH_ROUTES = ["/sign-in", "/sign-up"];
+const PRIVATE_PREFIXES = ["/profile", "/notes"] as const;
+const AUTH_ROUTES = ["/sign-in", "/sign-up"] as const;
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";
@@ -17,41 +16,47 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const setUser = useAuthStore((s) => s.setUser);
   const clear = useAuthStore((s) => s.clearIsAuthenticated);
 
-  const isPrivate = useMemo(() => PRIVATE_PREFIXES.some((p) => pathname.startsWith(p)), [pathname]);
-  const isAuthRoute = useMemo(() => AUTH_ROUTES.includes(pathname), [pathname]);
+  const isPrivate = useMemo(() => {
+    // /profile и /profile/...; /notes и /notes/...
+    return PRIVATE_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  }, [pathname]);
 
-  const [checking, setChecking] = useState(isPrivate);
+  const isAuthRoute = useMemo(
+    () => AUTH_ROUTES.includes(pathname as (typeof AUTH_ROUTES)[number]),
+    [pathname],
+  );
+
+  const [checking, setChecking] = useState<boolean>(isPrivate);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function run() {
-      // проверяем только там, где нужно
+    const run = async () => {
+      // Проверяем только auth/private маршруты
       if (!isPrivate && !isAuthRoute) return;
 
       setChecking(isPrivate);
       try {
-        const ok = await checkSession(); // дергает /api/auth/session (нормализовано)
+        // /api/auth/session: 200 c объектом -> User; 200 без тела/401 -> null
+        const user = await getSession();
         if (cancelled) return;
 
-        if (ok) {
-          // сессия валидна → получаем юзера
-          const u: User = await getMe();
-          if (cancelled) return;
-          setUser(u);
-
-          // авторизованному не показываем /sign-in, /sign-up
+        if (user) {
+          setUser(user);
+          // Авторизованному на /sign-in|/sign-up делать нечего
           if (isAuthRoute) router.replace("/profile");
         } else {
-          // сессии нет
-          await logout().catch(() => {});
+          // Нет сессии — приводим клиент в чистое состояние
+          try {
+            await logout(); // игнорируем 401/прочее
+          } catch {}
           clear();
           if (isPrivate) router.replace("/sign-in");
         }
       } finally {
         if (!cancelled) setChecking(false);
       }
-    }
+    };
 
     run();
     return () => {

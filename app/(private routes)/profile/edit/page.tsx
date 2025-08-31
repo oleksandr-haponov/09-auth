@@ -1,66 +1,85 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import css from "./page.module.css";
-import { me as getMe, updateMe } from "@/lib/api/clientApi";
+import { me as fetchMe, updateMe } from "@/lib/api/clientApi";
 import { useAuthStore } from "@/lib/store/authStore";
 import type { User } from "@/types/user";
 
 export default function ProfileEditPage() {
   const router = useRouter();
-  const userFromStore = useAuthStore((s) => s.user);
+  const storeUser = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
 
-  // локальная копия юзера (если уже есть в сторе — берём её)
-  const [user, setUserLocal] = useState<User | null>(userFromStore ?? null);
+  const [loading, setLoading] = useState<boolean>(!storeUser);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // ФОЛБЭК: если username нет — берём email (как на макете)
-  const initialName = userFromStore?.username?.trim() || userFromStore?.email || "";
+  const [username, setUsername] = useState<string>(
+    storeUser?.username?.trim() || storeUser?.email || "",
+  );
+  const [email, setEmail] = useState<string>(storeUser?.email || "");
+  const [avatar, setAvatar] = useState<string | undefined>(
+    (storeUser as any)?.avatar || (storeUser as any)?.avatarUrl,
+  );
 
-  const [username, setUsername] = useState<string>(initialName);
-  const [saving, setSaving] = useState(false);
+  const initialUsername = useMemo(
+    () => storeUser?.username?.trim() || storeUser?.email || "",
+    [storeUser],
+  );
 
-  // Если в сторе юзера ещё нет — подтянуть /users/me
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (userFromStore) return;
+      if (storeUser) {
+        setLoading(false);
+        return;
+      }
       try {
-        const u = await getMe();
-        if (!cancelled) {
-          setUserLocal(u);
-          setUser(u);
-          const name = u.username?.trim() || u.email || "";
-          setUsername(name);
-        }
+        const me = await fetchMe();
+        if (cancelled) return;
+        setUser(me);
+        setUsername(me.username?.trim() || me.email || "");
+        setEmail(me.email);
+        setAvatar((me as any)?.avatar || (me as any)?.avatarUrl);
       } catch {
-        // игнорируем — страница приватная и защищена middleware/AuthProvider
+        if (!cancelled) setError("Failed to load profile");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [userFromStore, setUser]);
+  }, [storeUser, setUser]);
+
+  const canSave = !saving && username.trim() && username.trim() !== initialUsername;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError(null);
     const next = username.trim();
-    if (!next) return;
+    if (!next || !canSave) return;
 
     setSaving(true);
     try {
-      const updated = await updateMe({ username: next });
+      const updated: User = await updateMe({ username: next });
       setUser(updated);
       router.replace("/profile");
-    } finally {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update profile");
       setSaving(false);
     }
   }
 
   function onCancel() {
-    router.replace("/profile");
+    router.push("/profile");
+  }
+
+  if (loading) {
+    return <main className={css.mainContent}>Loading…</main>;
   }
 
   return (
@@ -69,7 +88,7 @@ export default function ProfileEditPage() {
         <h1 className={css.formTitle}>Edit Profile</h1>
 
         <Image
-          src={"/avatar.png"}
+          src={avatar || "/avatar-placeholder.png"}
           alt="User Avatar"
           width={120}
           height={120}
@@ -77,7 +96,7 @@ export default function ProfileEditPage() {
           priority
         />
 
-        <form className={css.profileInfo} onSubmit={onSubmit}>
+        <form className={css.profileInfo} onSubmit={onSubmit} aria-busy={saving}>
           <div className={css.usernameWrapper}>
             <label htmlFor="username">Username:</label>
             <input
@@ -86,19 +105,23 @@ export default function ProfileEditPage() {
               className={css.input}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              autoFocus
+              disabled={saving}
             />
           </div>
 
-          <p>Email: {user?.email ?? "user_email@example.com"}</p>
+          <p>Email: {email || "user_email@example.com"}</p>
 
           <div className={css.actions}>
-            <button type="submit" className={css.saveButton} disabled={saving}>
-              Save
+            <button type="submit" className={css.saveButton} disabled={!canSave}>
+              {saving ? "Saving…" : "Save"}
             </button>
             <button type="button" className={css.cancelButton} onClick={onCancel} disabled={saving}>
               Cancel
             </button>
           </div>
+
+          {error && <p className={css.error}>{error}</p>}
         </form>
       </div>
     </main>

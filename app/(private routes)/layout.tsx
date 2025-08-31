@@ -1,7 +1,8 @@
 // app/(private routes)/layout.tsx
+import AuthProvider from "@/components/AuthProvider/AuthProvider";
 
-export const revalidate = 0; // без кеша
-export const dynamic = "force-dynamic"; // всегда динамически
+export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
 export default function PrivateRoutesLayout({
   children,
@@ -12,9 +13,9 @@ export default function PrivateRoutesLayout({
   modal: React.ReactNode;
 }) {
   return (
-    <>
+    <AuthProvider>
       {children}
       {modal}
-    </>
+    </AuthProvider>
   );
 }

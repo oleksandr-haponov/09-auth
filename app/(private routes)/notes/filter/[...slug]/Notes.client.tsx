@@ -1,4 +1,3 @@
-// app/notes/filter/[...slug]/Notes.client.tsx
 "use client";
 
 import { useMemo } from "react";
@@ -20,7 +19,12 @@ type NotesResponse = {
   totalPages?: number;
 };
 
-export default function NotesClient({ tag }: { tag: string | null }) {
+export type NotesClientProps = {
+  /** Тег из сегмента маршрута; null если “все” */
+  tag: string | null;
+};
+
+export default function NotesClient({ tag }: NotesClientProps) {
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -30,12 +34,20 @@ export default function NotesClient({ tag }: { tag: string | null }) {
 
   const { data, isLoading, isError, error } = useQuery<NotesResponse>({
     queryKey: ["notes", { q, page, tag: normalizedTag }],
-    queryFn: () => fetchNotes({ q, page, tag: tag ?? undefined }),
-    // дані вже префетчені на сервері, тож одразу гідруються
+    queryFn: async () => {
+      // fetchNotes ожидает { search, page, tag }
+      const raw: any = await fetchNotes({ search: q, page, tag: tag ?? undefined });
+      if (Array.isArray(raw)) return { notes: raw };
+      return {
+        notes: Array.isArray(raw?.notes) ? raw.notes : [],
+        totalPages: raw?.totalPages,
+      };
+    },
+    // v5: вместо keepPreviousData
+    placeholderData: (prev) => prev,
   });
 
   const totalPages = data?.totalPages ?? 1;
-
   const notes = useMemo(() => data?.notes ?? [], [data]);
 
   const goToPage = (nextPage: number) => {
@@ -100,7 +112,6 @@ export default function NotesClient({ tag }: { tag: string | null }) {
         ))}
       </ul>
 
-      {/* Проста пагінація */}
       {totalPages > 1 && (
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16 }}>
           <button

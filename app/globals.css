@@ -1,17 +1,119 @@
+/* ===== Global defaults (KISS) ===== */
+
+/* Универсальный box-sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Сглаживание шрифтов и корректная масштабируемость */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Базовая типографика + корректная высота страницы */
 html,
 body {
-  height: 100%;
+  margin: 0;
 }
 body {
-  margin: 0;
   font-family:
-    system-ui,
     -apple-system,
+    system-ui,
     Segoe UI,
     Roboto,
     sans-serif;
+  line-height: 1.5;
+  /* Вместо height:100% используем min-height:100dvh — корректно с моб. браузерами */
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
   background: #fafafa;
+  color: #212529;
+}
+
+/* Сбросы для медиа: не выходят за контейнер, корректно масштабируются */
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block;
+  max-width: 100%;
+}
+img,
+video,
+canvas {
+  height: auto;
+}
+
+/* Наследуем шрифт/цвет для форм */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+
+/* Базовые ссылки: цвет берём из текущего, отдельные компоненты переопределяют через CSS-модули */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Фокус по умолчанию для интерактивных элементов, если компонент не переопределил */
+:focus-visible {
+  outline: 2px solid #0d6efd;
+  outline-offset: 2px;
+}
+
+/* Уважение к настройкам пользователя */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Мелкие удобства */
+[hidden] {
+  display: none !important;
+}
+/* Срезаем дефолтные большие отступы, компоненты сами их задают */
+:where(h1, h2, h3, h4, h5, h6, p, ul, ol) {
+  margin: 0;
+}
+
+/* ===== A11y: Skip to content ===== */
+.visually-hidden-focusable {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.visually-hidden-focusable:focus {
+  left: 8px;
+  top: 8px;
+  width: auto;
+  height: auto;
+  padding: 8px 12px;
+  background: #000;
+  color: #fff;
+  border-radius: 4px;
+  z-index: 10000;
 }

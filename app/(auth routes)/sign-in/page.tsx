@@ -1,4 +1,3 @@
-// app/(auth routes)/sign-in/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -62,36 +61,57 @@ export default function SignInPage() {
     setError("");
     const fd = new FormData(e.currentTarget);
     mutate({
-      email: String(fd.get("email") || ""),
-      password: String(fd.get("password") || ""),
+      email: String(fd.get("email") || "").trim(),
+      password: String(fd.get("password") || "").trim(),
     });
   }
 
-  // Гард: если уже авторизованы — ничего не рендерим, чтобы окно логина не "висело"
+  // Гард: если уже авторизованы — ничего не рендерим
   if (isAuthed) return null;
 
   return (
     <main className={css.mainContent}>
-      <form className={css.form} onSubmit={onSubmit}>
+      <form className={css.form} onSubmit={onSubmit} aria-busy={isPending}>
         <h1 className={css.formTitle}>Sign in</h1>
 
         <div className={css.formGroup}>
           <label htmlFor="email">Email</label>
-          <input id="email" type="email" name="email" className={css.input} required />
+          <input
+            id="email"
+            type="email"
+            name="email"
+            className={css.input}
+            autoComplete="username"
+            required
+            autoFocus
+            disabled={isPending}
+            onInput={() => error && setError("")}
+          />
         </div>
 
         <div className={css.formGroup}>
           <label htmlFor="password">Password</label>
-          <input id="password" type="password" name="password" className={css.input} required />
+          <input
+            id="password"
+            type="password"
+            name="password"
+            className={css.input}
+            autoComplete="current-password"
+            required
+            disabled={isPending}
+            onInput={() => error && setError("")}
+          />
         </div>
 
         <div className={css.actions}>
           <button type="submit" className={css.submitButton} disabled={isPending}>
-            Log in
+            {isPending ? "Logging in…" : "Log in"}
           </button>
         </div>
 
-        <p className={css.error}>{error}</p>
+        <p className={css.error} aria-live="polite">
+          {error}
+        </p>
       </form>
     </main>
   );

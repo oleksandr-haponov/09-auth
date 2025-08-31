@@ -1,31 +1,41 @@
+// components/Header/Header.tsx
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import AuthNavigation from "@/components/AuthNavigation/AuthNavigation";
-import TagsMenu from "@/components/TagsMenu/TagsMenu"; // ← ДОДАНО
+import TagsMenu from "@/components/TagsMenu/TagsMenu";
 import css from "./Header.module.css";
 
 export default function Header() {
+  const pathname = usePathname();
+  const isAuthRoute = pathname === "/sign-in" || pathname === "/sign-up";
+
   return (
     <header className={css.header}>
-      <Link href="/" className={css.brand ?? css.navigationLink} aria-label="Home">
+      <Link href="/" className={css.brand} aria-label="Home">
         NoteHub
       </Link>
 
-      <ul className={css.navigation} aria-label="Main Navigation">
-        <li className={css.navigationItem}>
-          <Link href="/" prefetch={false} className={css.navigationLink}>
-            Home
-          </Link>
-        </li>
+      <nav className={css.navigation} aria-label="Main Navigation">
+        <ul className={css.navigationList}>
+          <li className={css.navigationItem}>
+            <Link href="/" prefetch={false} className={css.navigationLink}>
+              Home
+            </Link>
+          </li>
 
-        {/* ЗАМІНА: замість лінку на /notes показуємо випадаючий список тегів */}
-        <li className={css.navigationItem}>
-          <TagsMenu />
-        </li>
+          {/* Показываем TagsMenu на всех страницах, кроме auth (можно убрать условие, если нужно всегда) */}
+          {!isAuthRoute && (
+            <li className={css.navigationItem}>
+              <TagsMenu />
+            </li>
+          )}
 
-        <AuthNavigation />
-      </ul>
+          {/* AuthNavigation сам отрендерит нужные <li> */}
+          <AuthNavigation />
+        </ul>
+      </nav>
     </header>
   );
 }

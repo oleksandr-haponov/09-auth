@@ -1,17 +1,12 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: true,
+import type { NextConfig } from "next";
 
-  // на Vercel иногда сыпется rushstack-патч — отключаем линт на билде
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-
-  // если аватары/картинки приходят с внешних доменов
+const nextConfig: NextConfig = {
   images: {
+    // Разрешаем аватары с любого https-домена и локальную разработку
     remotePatterns: [
       { protocol: "https", hostname: "**" },
-      { protocol: "http", hostname: "**" },
+      { protocol: "http", hostname: "localhost" },
+      { protocol: "http", hostname: "127.0.0.1" },
     ],
   },
 };

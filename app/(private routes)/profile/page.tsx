@@ -1,17 +1,29 @@
-// app/(private routes)/profile/page.tsx
-"use client";
-
-import Link from "next/link";
+import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
+import { headers } from "next/headers";
+import { getMeServer } from "@/lib/api/serverApi";
 import css from "./page.module.css";
-import { useAuthStore } from "@/lib/store/authStore";
 
-export default function ProfilePage() {
-  const user = useAuthStore((s) => s.user);
+export const metadata: Metadata = {
+  title: "Profile Page",
+  description: "User profile with avatar, username and email",
+  robots: { index: false, follow: false },
+  openGraph: {
+    title: "Profile Page",
+    description: "User profile with avatar, username and email",
+    type: "profile",
+  },
+  alternates: { canonical: "/profile" },
+};
 
-  const username = user?.username ?? user?.email ?? "your_username";
-  const email = user?.email ?? "your_email@example.com";
-  const avatarSrc = (user as any)?.avatar ?? (user as any)?.avatarUrl ?? "/avatar.png";
+export default async function ProfilePage() {
+  const cookieHeader = (await headers()).get("cookie") ?? undefined; // ← здесь было без await
+  const user = await getMeServer(cookieHeader);
+
+  const username = user.username || user.email || "your_username";
+  const email = user.email || "your_email@example.com";
+  const avatarSrc = user.avatar ?? user.avatarUrl ?? "/avatar-placeholder.png";
 
   return (
     <main className={css.mainContent}>
