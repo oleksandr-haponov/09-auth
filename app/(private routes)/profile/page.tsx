@@ -1,19 +1,13 @@
 // app/(private routes)/profile/page.tsx
-import type { Metadata } from "next";
-import css from "./page.module.css";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Profile Page | NoteHub",
-  description: "User profile page",
-  robots: { index: false, follow: false },
-  openGraph: {
-    title: "Profile Page | NoteHub",
-    description: "User profile page",
-    type: "website",
-  },
-};
+import Image from "next/image";
+import css from "./page.module.css";
+import { useAuthStore } from "@/lib/store/authStore";
 
 export default function ProfilePage() {
+  const user = useAuthStore((s) => s.user);
+
   return (
     <main className={css.mainContent}>
       <div className={css.profileCard}>
@@ -25,18 +19,19 @@ export default function ProfilePage() {
         </div>
 
         <div className={css.avatarWrapper}>
-          <img
+          <Image
             src="/avatar.png"
             alt="User Avatar"
             width={120}
             height={120}
             className={css.avatar}
+            priority
           />
         </div>
 
         <div className={css.profileInfo}>
-          <p>Username: your_username</p>
-          <p>Email: your_email@example.com</p>
+          <p>Username: {user?.username ?? "your_username"}</p>
+          <p>Email: {user?.email ?? "your_email@example.com"}</p>
         </div>
       </div>
     </main>

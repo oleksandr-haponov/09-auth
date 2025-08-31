@@ -1,46 +1,57 @@
+// app/(private routes)/profile/edit/page.tsx
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { me, updateMe } from "@/lib/api/clientApi";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/lib/store/authStore";
 import css from "./page.module.css";
+import { me as getMe, updateMe } from "@/lib/api/clientApi";
+import { useAuthStore } from "@/lib/store/authStore";
+import type { User } from "@/types/user";
 
-export default function EditProfilePage() {
+export default function ProfileEditPage() {
   const router = useRouter();
-  const qc = useQueryClient();
-  const { user, setUser } = useAuthStore();
+  const userFromStore = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
 
-  const { data } = useQuery({
-    queryKey: ["me"],
-    queryFn: me,
-    staleTime: 0,
-    gcTime: 0,
-  });
+  const [user, setUserLocal] = useState<User | null>(userFromStore ?? null);
+  const [username, setUsername] = useState<string>(userFromStore?.username ?? ""); // ← FIX
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (data) setUser(data);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.id, data?.email, data?.username]);
+    let cancelled = false;
+    (async () => {
+      if (userFromStore) return;
+      try {
+        const u = await getMe();
+        if (!cancelled) {
+          setUserLocal(u);
+          setUser(u);
+          setUsername(u.username ?? ""); // ← FIX
+        }
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [userFromStore, setUser]);
 
-  const current = data ?? user ?? null;
-
-  const { mutate, isPending } = useMutation({
-    mutationFn: (p: { username: string }) => updateMe(p),
-    onSuccess: (updated) => {
-      setUser(updated);
-      qc.invalidateQueries({ queryKey: ["me"] });
-      router.replace("/profile");
-    },
-  });
-
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const username = String(fd.get("username") || "");
-    mutate({ username });
+    if (!username.trim()) return;
+
+    setSaving(true);
+    try {
+      const updated = await updateMe({ username: username.trim() });
+      setUser(updated);
+      router.replace("/profile");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function onCancel() {
+    router.replace("/profile");
   }
 
   return (
@@ -49,11 +60,12 @@ export default function EditProfilePage() {
         <h1 className={css.formTitle}>Edit Profile</h1>
 
         <Image
-          src={current?.avatarUrl || "/avatar.png"}
+          src={"/avatar.png"}
           alt="User Avatar"
           width={120}
           height={120}
           className={css.avatar}
+          priority
         />
 
         <form className={css.profileInfo} onSubmit={onSubmit}>
@@ -63,24 +75,18 @@ export default function EditProfilePage() {
               id="username"
               type="text"
               className={css.input}
-              defaultValue={current?.username || ""}
-              required
-              disabled={isPending}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
             />
           </div>
 
-          <p>Email: {current?.email || "user_email@example.com"}</p>
+          <p>Email: {user?.email ?? "user_email@example.com"}</p>
 
           <div className={css.actions}>
-            <button type="submit" className={css.saveButton} disabled={isPending}>
+            <button type="submit" className={css.saveButton} disabled={saving}>
               Save
             </button>
-            <button
-              type="button"
-              className={css.cancelButton}
-              onClick={() => router.back()}
-              disabled={isPending}
-            >
+            <button type="button" className={css.cancelButton} onClick={onCancel} disabled={saving}>
               Cancel
             </button>
           </div>
