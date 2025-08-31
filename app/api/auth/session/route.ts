@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { upstream } from "../../_utils/utils";
 
 export const dynamic = "force-dynamic";
@@ -18,13 +17,31 @@ type CookieOptions = {
 export async function GET(_req: NextRequest) {
   const res = await upstream("/auth/session", { method: "GET" });
 
-  // Пробрасываем Set-Cookie (например, ротация access/refresh)
+  // Сначала формируем тело ответа согласно твоей нормализации
+  let response: NextResponse;
+
+  if (res.status === 400 || res.status === 401 || res.status === 204) {
+    response = NextResponse.json(null, { status: 200 });
+  } else {
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const body = await res.json().catch(() => null);
+      response = NextResponse.json(body, { status: res.status });
+    } else {
+      const text = await res.text();
+      response = new NextResponse(text, {
+        status: res.status,
+        headers: { "content-type": contentType || "text/plain; charset=utf-8" },
+      });
+    }
+  }
+
+  // Пробрасываем Set-Cookie из апстрима в ответ (через response.cookies.set)
   const setCookieHeaderArray: string[] =
     ((res.headers as any).getSetCookie?.() as string[] | undefined) ??
     (res.headers.get("set-cookie") ? [res.headers.get("set-cookie") as string] : []);
 
   if (setCookieHeaderArray.length) {
-    const store = cookies();
     for (const cookieStr of setCookieHeaderArray) {
       const parts = cookieStr.split(";").map((p) => p.trim());
       const [nameValue, ...attrs] = parts;
@@ -49,33 +66,12 @@ export async function GET(_req: NextRequest) {
         }
       }
 
-      cookies().set(name, value, opts);
+      response.cookies.set(name, value, opts);
     }
   }
 
-  // Нормализация: 400/401/204 => нет сессии
-  if (res.status === 400 || res.status === 401 || res.status === 204) {
-    return NextResponse.json(null, {
-      status: 200,
-      headers: { "Cache-Control": "no-store" },
-    });
-  }
+  // Кеш не храним
+  response.headers.set("Cache-Control", "no-store");
 
-  const contentType = res.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    const body = await res.json().catch(() => null);
-    return NextResponse.json(body, {
-      status: res.status,
-      headers: { "Cache-Control": "no-store" },
-    });
-  } else {
-    const text = await res.text();
-    return new NextResponse(text, {
-      status: res.status,
-      headers: {
-        "Cache-Control": "no-store",
-        "content-type": contentType || "text/plain; charset=utf-8",
-      },
-    });
-  }
+  return response;
 }

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { upstream, JAR_COOKIE } from "../../_utils/utils";
 
 export const dynamic = "force-dynamic";
@@ -18,12 +17,33 @@ type CookieOptions = {
 export async function POST(_req: NextRequest) {
   const res = await upstream("/auth/logout", { method: "POST" });
 
-  // 1) Прокидываем Set-Cookie из апстрима в браузер
+  // Сконструируем ответ, в который будем проставлять cookies
+  if (res.status === 204) {
+    const response = new NextResponse(null, { status: 204 });
+
+    // на всякий случай подчистим локальные куки
+    response.cookies.delete(JAR_COOKIE);
+    response.cookies.delete("accessToken");
+    response.cookies.delete("refreshToken");
+
+    return response;
+  }
+
+  const contentType = res.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  const body = isJson ? await res.json().catch(() => ({})) : await res.text();
+
+  const response = isJson
+    ? NextResponse.json(body, { status: res.status })
+    : new NextResponse(body, {
+        status: res.status,
+        headers: { "content-type": contentType || "text/plain; charset=utf-8" },
+      });
+
+  // Проброс Set-Cookie из апстрима
   const setCookieHeaderArray: string[] =
     ((res.headers as any).getSetCookie?.() as string[] | undefined) ??
     (res.headers.get("set-cookie") ? [res.headers.get("set-cookie") as string] : []);
-
-  const store = cookies(); // синхронная API
 
   if (setCookieHeaderArray.length) {
     for (const cookieStr of setCookieHeaderArray) {
@@ -50,33 +70,14 @@ export async function POST(_req: NextRequest) {
         }
       }
 
-      store.set(name, value, opts);
+      response.cookies.set(name, value, opts);
     }
   }
 
-  // 2) Чистим локальный "джар" (и на всякий случай токены, если они есть)
-  store.delete(JAR_COOKIE);
-  try {
-    store.delete("accessToken");
-  } catch {}
-  try {
-    store.delete("refreshToken");
-  } catch {}
+  // Всегда чистим наш «джар» и возможные токены
+  response.cookies.delete(JAR_COOKIE);
+  response.cookies.delete("accessToken");
+  response.cookies.delete("refreshToken");
 
-  // 3) Возвращаем апстрим-ответ
-  if (res.status === 204) {
-    return new NextResponse(null, { status: 204 });
-  }
-
-  const contentType = res.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    const body = await res.json().catch(() => ({}));
-    return NextResponse.json(body, { status: res.status });
-  } else {
-    const text = await res.text();
-    return new NextResponse(text, {
-      status: res.status,
-      headers: { "content-type": contentType || "text/plain; charset=utf-8" },
-    });
-  }
+  return response;
 }

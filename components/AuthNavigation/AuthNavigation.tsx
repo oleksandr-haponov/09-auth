@@ -9,8 +9,7 @@ import css from "./AuthNavigation.module.css";
 export default function AuthNavigation() {
   const router = useRouter();
 
-  // ⚠️ Чтобы SSR и первый клиентский рендер совпадали —
-  // до маунта показываем гостевую навигацию.
+  // до маунта показываем гостевую навигацию, чтобы SSR == 1-й клиентский рендер
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -37,12 +36,7 @@ export default function AuthNavigation() {
     return (
       <>
         <li className={css.navigationItem}>
-          <a
-            href="/profile"
-            prefetch={"false" as any}
-            className={css.navigationLink}
-            suppressHydrationWarning
-          >
+          <a href="/profile" className={css.navigationLink} suppressHydrationWarning>
             Profile
           </a>
         </li>
@@ -63,27 +57,17 @@ export default function AuthNavigation() {
     );
   }
 
-  // Гостевая версия — рендерится и на сервере, и на первом клиентском рендере (=> без гидрации)
+  // Гостевая версия
   return (
     <>
       <li className={css.navigationItem}>
-        <a
-          href="/sign-in"
-          prefetch={"false" as any}
-          className={css.navigationLink}
-          suppressHydrationWarning
-        >
+        <a href="/sign-in" className={css.navigationLink} suppressHydrationWarning>
           Login
         </a>
       </li>
 
       <li className={css.navigationItem}>
-        <a
-          href="/sign-up"
-          prefetch={"false" as any}
-          className={css.navigationLink}
-          suppressHydrationWarning
-        >
+        <a href="/sign-up" className={css.navigationLink} suppressHydrationWarning>
           Sign up
         </a>
       </li>

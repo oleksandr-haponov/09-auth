@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { upstream } from "../../_utils/utils";
 
 export const dynamic = "force-dynamic";
@@ -18,8 +17,8 @@ type CookieOptions = {
 export async function POST(req: NextRequest) {
   const json = await req.json().catch(() => ({}));
 
-  const res = await upstream("/auth/login", {
-    // CHANGED: /auth/register -> /auth/login
+  // CHANGED: правильный апстрим-роут для регистрации
+  const res = await upstream("/auth/register", {
     method: "POST",
     body: JSON.stringify(json),
     headers: {
@@ -28,14 +27,27 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Переносимо cookies з бекенду у браузер
+  // Готовим ответ (учитываем JSON/текст/204)
+  const status = res.status;
+  const contentType = res.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+
+  const response =
+    status === 204
+      ? new NextResponse(null, { status })
+      : isJson
+        ? NextResponse.json(await res.json().catch(() => ({})), { status })
+        : new NextResponse(await res.text(), {
+            status,
+            headers: { "content-type": contentType || "text/plain; charset=utf-8" },
+          });
+
+  // Пробрасываем Set-Cookie из апстрима в браузер
   const setCookieHeaderArray: string[] =
     ((res.headers as any).getSetCookie?.() as string[] | undefined) ??
     (res.headers.get("set-cookie") ? [res.headers.get("set-cookie") as string] : []);
 
   if (setCookieHeaderArray.length) {
-    const store = cookies();
-
     for (const cookieStr of setCookieHeaderArray) {
       const parts = cookieStr.split(";").map((p) => p.trim());
       const [nameValue, ...attrs] = parts;
@@ -56,29 +68,13 @@ export async function POST(req: NextRequest) {
         else if (k === "secure") opts.secure = true;
         else if (k === "samesite") {
           const vv = v?.toLowerCase();
-          if (vv === "lax" || vv === "strict" || vv === "none") {
-            opts.sameSite = vv;
-          }
+          if (vv === "lax" || vv === "strict" || vv === "none") opts.sameSite = vv;
         }
       }
 
-      store.set(name, value, opts);
+      response.cookies.set(name, value, opts);
     }
   }
 
-  if (res.status === 204) {
-    return new NextResponse(null, { status: 204 });
-  }
-
-  const contentType = res.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    const body = await res.json().catch(() => ({}));
-    return NextResponse.json(body, { status: res.status });
-  } else {
-    const text = await res.text();
-    return new NextResponse(text, {
-      status: res.status,
-      headers: { "content-type": contentType || "text/plain; charset=utf-8" },
-    });
-  }
+  return response;
 }
