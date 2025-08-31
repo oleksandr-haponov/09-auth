@@ -1,4 +1,4 @@
- import axios from 'axios';
+  import axios from 'axios';
 
 // Створюємо інстанс axios
 export const nextServer = axios.create({
