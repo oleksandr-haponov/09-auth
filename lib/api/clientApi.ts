@@ -10,24 +10,28 @@ export type LoginPayload = Credentials;
 
 /** POST /auth/register */
 export async function register(payload: RegisterPayload): Promise<User> {
-  const { data } = await api.post<User>("/auth/register", payload);
+  // CHANGED: добавлен withCredentials
+  const { data } = await api.post<User>("/auth/register", payload, { withCredentials: true });
   return data;
 }
 
 /** POST /auth/login */
 export async function login(payload: LoginPayload): Promise<User> {
-  const { data } = await api.post<User>("/auth/login", payload);
+  // CHANGED: добавлен withCredentials
+  const { data } = await api.post<User>("/auth/login", payload, { withCredentials: true });
   return data;
 }
 
 /** POST /auth/logout */
 export async function logout(): Promise<void> {
-  await api.post("/auth/logout");
+  // CHANGED: добавлен withCredentials
+  await api.post("/auth/logout", null, { withCredentials: true });
 }
 
 /** GET /auth/session — может вернуть 200 без тела или 204 */
 export async function session(): Promise<User | null> {
-  const res = await api.get<User | null>("/auth/session");
+  // CHANGED: добавлен withCredentials
+  const res = await api.get<User | null>("/auth/session", { withCredentials: true });
   if (res.status === 204) return null;
   const d = res.data as unknown;
   // Нормализуем: пустая строка/undefined/null => null
@@ -38,13 +42,15 @@ export async function session(): Promise<User | null> {
 
 /** GET /users/me */
 export async function me(): Promise<User> {
-  const { data } = await api.get<User>("/users/me");
+  // CHANGED: добавлен withCredentials
+  const { data } = await api.get<User>("/users/me", { withCredentials: true });
   return data;
 }
 
 /** PATCH /users/me */
 export async function updateMe(patch: { username: string }): Promise<User> {
-  const { data } = await api.patch<User>("/users/me", patch);
+  // CHANGED: добавлен withCredentials
+  const { data } = await api.patch<User>("/users/me", patch, { withCredentials: true });
   return data;
 }
 
