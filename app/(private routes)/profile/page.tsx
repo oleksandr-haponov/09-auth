@@ -20,23 +20,16 @@ export const metadata: Metadata = {
 
 export default async function ProfilePage() {
   const cookieHeader = (await headers()).get("cookie") ?? undefined;
-
-  let user: {
-    email: string;
-    username?: string | null;
-    avatar?: string | null;
-    avatarUrl?: string | null;
-  };
+  let user: any;
   try {
     user = await getMeServer(cookieHeader);
   } catch {
-    // если куки ещё не применились или сессия истекла — уводим на логин
     redirect("/sign-in");
   }
 
-  const username = user.username || user.email || "your_username";
-  const email = user.email || "your_email@example.com";
-  const avatarSrc = user.avatar ?? user.avatarUrl ?? "/avatar-placeholder.png";
+  const username = user?.username || user?.email || "your_username";
+  const email = user?.email || "your_email@example.com";
+  const avatarSrc = user?.avatar ?? user?.avatarUrl ?? "/avatar-placeholder.png";
 
   return (
     <main className={css.mainContent}>
@@ -47,7 +40,6 @@ export default async function ProfilePage() {
             Edit Profile
           </Link>
         </div>
-
         <div className={css.avatarWrapper}>
           <Image
             src={avatarSrc}
@@ -58,7 +50,6 @@ export default async function ProfilePage() {
             priority
           />
         </div>
-
         <div className={css.profileInfo}>
           <p>Username: {username}</p>
           <p>Email: {email}</p>

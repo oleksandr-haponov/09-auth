@@ -1,4 +1,3 @@
-// app/(auth routes)/layout.tsx
 import { Suspense } from "react";
 
 export const revalidate = 0;

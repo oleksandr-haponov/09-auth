@@ -1,27 +1,28 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { register, session as fetchSession, type RegisterPayload } from "@/lib/api/clientApi";
+import { login, session as fetchSession, type Credentials } from "@/lib/api/clientApi";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/store/authStore";
 import css from "./page.module.css";
 
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
-  const r = (err as { response?: { data?: { message?: string }; status?: number } })?.response;
-  const status = r?.status;
-  const msg = r?.data?.message || "Registration failed";
-  return status ? `${msg} (HTTP ${status})` : msg;
+  const r = (err as { response?: { data?: { message?: string } } })?.response;
+  return r?.data?.message || "Login failed";
 }
 
-export default function SignUpPage() {
+export default function SignInClient({ initialEmail }: { initialEmail: string }) {
   const router = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
   const isAuthed = useAuthStore((s) => s.isAuthenticated);
+
+  const emailRef = useRef<HTMLInputElement | null>(null);
+  const passwordRef = useRef<HTMLInputElement | null>(null);
+
   const [error, setError] = useState("");
   const [redirecting, setRedirecting] = useState(false);
-  const emailRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -32,6 +33,8 @@ export default function SignUpPage() {
         if (u) setUser(u);
         setRedirecting(true);
         router.replace("/profile");
+      } else if (initialEmail) {
+        passwordRef.current?.focus();
       } else {
         emailRef.current?.focus();
       }
@@ -39,44 +42,36 @@ export default function SignUpPage() {
     return () => {
       mounted = false;
     };
-  }, [isAuthed, router, setUser]);
+  }, [isAuthed, router, setUser, initialEmail]);
 
-  const { mutateAsync, isPending } = useMutation({
-    mutationFn: (p: RegisterPayload) => register(p),
-  });
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
-    const fd = new FormData(e.currentTarget);
-    const email = String(fd.get("email") || "").trim();
-    const password = String(fd.get("password") || "").trim();
-    if (!email || !password) return;
-
-    try {
-      await mutateAsync({ email, password });
-      const fromSession = await fetchSession(); // гарантируем Set-Cookie
-      if (fromSession) setUser(fromSession);
+  const { mutate, isPending } = useMutation({
+    mutationFn: (p: Credentials) => login(p),
+    onSuccess: (user) => {
+      setUser(user);
       setRedirecting(true);
       router.prefetch?.("/profile");
       router.replace("/profile");
-    } catch (err: any) {
-      const status = err?.response?.status as number | undefined;
-      if (status === 409) {
-        router.replace(`/sign-in?email=${encodeURIComponent(email)}`);
-        return;
-      }
-      setError(getErrorMessage(err));
-    }
+    },
+    onError: (err: unknown) => setError(getErrorMessage(err)),
+  });
+
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError("");
+    const fd = new FormData(e.currentTarget);
+    mutate({
+      email: String(fd.get("email") || "").trim(),
+      password: String(fd.get("password") || "").trim(),
+    });
   }
 
   return (
     <main className={css.mainContent}>
-      <h1 className={css.formTitle}>Sign up</h1>
       {redirecting ? (
         <div style={{ padding: 16 }}>Redirecting…</div>
       ) : (
         <form className={css.form} onSubmit={onSubmit} aria-busy={isPending}>
+          <h1 className={css.formTitle}>Sign in</h1>
           <div className={css.formGroup}>
             <label htmlFor="email">Email</label>
             <input
@@ -87,6 +82,7 @@ export default function SignUpPage() {
               className={css.input}
               autoComplete="username"
               required
+              defaultValue={initialEmail}
               disabled={isPending}
               onInput={() => error && setError("")}
             />
@@ -94,11 +90,12 @@ export default function SignUpPage() {
           <div className={css.formGroup}>
             <label htmlFor="password">Password</label>
             <input
+              ref={passwordRef}
               id="password"
               type="password"
               name="password"
               className={css.input}
-              autoComplete="new-password"
+              autoComplete="current-password"
               required
               disabled={isPending}
               onInput={() => error && setError("")}
@@ -106,7 +103,7 @@ export default function SignUpPage() {
           </div>
           <div className={css.actions}>
             <button type="submit" className={css.submitButton} disabled={isPending}>
-              {isPending ? "Registering…" : "Register"}
+              {isPending ? "Logging in…" : "Log in"}
             </button>
           </div>
           <p className={css.error} aria-live="polite">

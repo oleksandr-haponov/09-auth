@@ -1,4 +1,3 @@
-// components/Header/Header.tsx
 "use client";
 
 import Link from "next/link";
@@ -20,7 +19,7 @@ export default function Header() {
             </Link>
           </li>
           <li className={css.navigationItem}>
-            <TagsMenu /> {/* статическое меню, без сетевых запросов */}
+            <TagsMenu />
           </li>
           <AuthNavigation />
         </ul>
