@@ -71,3 +71,52 @@
   margin-top: 4px;
   text-align: center;
 }
+
+/* ===== Модалка логина ===== */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #fff;
+  width: 420px;
+  max-width: calc(100% - 32px);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  padding: 24px;
+  position: relative;
+}
+
+.modalClose {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: #6c757d;
+}
+
+/* кнопка Cancel в модалке */
+.cancelButton {
+  padding: 8px 16px;
+  font-size: 16px;
+  background-color: #e9ecef;
+  color: #212529;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.cancelButton:hover {
+  background-color: #dde2e6;
+}
